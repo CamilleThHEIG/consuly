@@ -2,11 +2,11 @@
 
 ## Section 1 - Overview
 
-Consuly protocol is a custom application protocol used by the application consuly.
+Consuly protocol is a custom application protocol used by the application consuly. 
 
 ## Section 2 - Transport Protocol
 
-Consuly protocol uses UDP to be able to handle multiple communications at the same time.  
+Consuly protocol uses UDP to be able to handle multiple communications at the same time.  **Used port is yet to be defined.**
 Every message must be encoded in UTF-8 and delimited by a newline character (\n). The messages are treated as text messages.  
 The emitter must initiate the communication with the server. Once connected to a server, a user can join or create a group.  
 When the client is done, it closes communication with the server, and when nobody is connected to the server for a delimited time,  
@@ -16,7 +16,9 @@ Unknown messages are ignored.
 
 ## Section 3 - Messages
 
-*Work in progress*
+*Work in progress. Would it better better to split client errors and server errors ?*
+
+ERROR <number> : indicates an error with it's number *number specifications yet to come*
 
 ### Establish connection
 
@@ -37,5 +39,37 @@ PASSWORD <password> : the client indicates a password for a group. <password> sh
 VALID_PASSWD : server indicates the client that chosen password is valid. When sending this, the server needs to remember that this client is **admin** for this group number.
 
 INVALID_PASSWD : server indicates the client that chosen password is not valid
+
+### Delete a group
+
+DELETE_GROUP : an admin indicates server that it want to delete its group.  Sender client now waits for the server to return SUCCESS_DELETION.
+
+Return ERROR 1 if the sender is not an admin
+
+FORCE_QUIT : asks a client to quit the server 
+
+SUCESS_DELETION : server indicates the admin of a group that the group was successfully deleted.
+
+
+
+### Join a group
+
+LIST : client asks the server for the list of available groups
+
+SEND_LIST : server sends its avaialable group list
+
+JOIN <groupNumber> : client indicates it wants to join the group number <groupNumber>. Server will answer ERROR 3 if the group does not exist.
+
+VERIFY_PSSWD : the server asks the the client who sent the previous JOIN for the group password.
+
+TRY_PASSWD <password> : client indicates the server that it thinks the password is <password>.
+
+
+
+### Quit a group
+
+QUIT : the client indicates the server it wants to quit the group its in. 
+
+ACK_QUIT : the server indicates the server that it understood that the client quitted its group
 
 ## Section 4 - Examples
