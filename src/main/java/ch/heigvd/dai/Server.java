@@ -1,9 +1,16 @@
 package ch.heigvd.dai;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import java.util.Date;
 import java.util.concurrent.Callable;
 
@@ -11,6 +18,7 @@ import picocli.CommandLine;
 
 @CommandLine.Command(name = "server", description = "Launch the server side of the application.")
 public class Server implements Callable<Integer> {
+    private static final int NUMBER_OF_THREADS = 5;
 
     @CommandLine.Option(
             names = {"-p", "--port"},
@@ -20,52 +28,54 @@ public class Server implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        System.err.println("Connecting to port " + port + "...");
-        try (DatagramSocket socket = new DatagramSocket(port)) {
-            System.out.println("[Server] Success! Listening for unicast messages on port " + port + "...");
-            while (!socket.isClosed()) {
-                // Create a buffer for the incoming request
-                byte[] requestBuffer = new byte[1024];
-
-                // Create a packet for the incoming request
-                DatagramPacket requestPacket = new DatagramPacket(requestBuffer, requestBuffer.length);
-
-                // Receive the packet - this is a blocking call
-                socket.receive(requestPacket);
-
-                // Transform the request into a string
-                String request
-                        = new String(
-                                requestPacket.getData(),
-                                requestPacket.getOffset(),
-                                requestPacket.getLength(),
-                                StandardCharsets.UTF_8);
-
-                System.out.println("[Server] Request received (at " + new Date() + "): " + request);
-
-                // Prepare the response
-                String response = "Hello, client! I'm the server. 👻";
-
-                // Transform the message into a byte array - always specify the encoding
-                byte[] responseBuffer = response.getBytes(StandardCharsets.UTF_8);
-
-                // Create a packet with the message, the client address and the client port
-                DatagramPacket responsePacket
-                        = new DatagramPacket(
-                                responseBuffer,
-                                responseBuffer.length,
-                                requestPacket.getAddress(),
-                                requestPacket.getPort());
-
-                // Send the packet
-                socket.send(responsePacket);
-
-                System.out.println("[Server] Response sent (at " + new Date() + "): " + response);
+        System.out.println("Server is listening on port " + port);
+        try (
+                ServerSocket serverSocket = new ServerSocket(port); ExecutorService executor = Executors.newFixedThreadPool(NUMBER_OF_THREADS);) {
+            while (!serverSocket.isClosed()) {
+                Socket socket = serverSocket.accept(); // Accept the client connection
+                System.out.println("New client connected: " + socket.getInetAddress().getHostAddress());
+                executor.submit(new ClientHandler(socket));
             }
-        } catch (IOException e) {
-            System.err.println("Error: " + e.getMessage());
-            return 1;
+        } catch (IOException ex) {
+            System.out.println("Server exception: " + ex.getMessage());
         }
         return 0;
+    }
+
+    static class ClientHandler implements Runnable {
+        private final Socket socket;
+        private static final int LOWERBOUND = 1, UPPERBOUND = 100;
+
+        public ClientHandler(Socket socket) {
+            this.socket = socket;
+        }
+
+        @Override
+        public void run() {
+            try (
+                    BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+                    BufferedWriter out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8))
+            ){
+                out.write("Welcome-average giga chad- you must have been waiting for so long to have a decent app ! What kind do you like ?");
+                out.newLine();
+                out.flush(); // Ensure the message is sent to the client
+
+                String userIn;
+                while ((userIn = in.readLine()) != null) {
+                    try {
+                            System.out.println("[Client] " + userIn);
+                            out.write("Congratulations! You've guessed the number, Bye.");
+                            out.flush();
+                    } catch (IOException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+                out.newLine();
+                out.flush(); // Ensure the message is sent to the client
+
+        } catch (IOException e) {
+                System.out.println("Client handling exception: " + e.getMessage());
+            }
+        }
     }
 }
