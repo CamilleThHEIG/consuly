@@ -40,3 +40,8 @@ Thumbs.db
 # Folder config file
 [Dd]esktop.ini
 
+
+# Ignore our user files
+
+userfiles/*.json
+
