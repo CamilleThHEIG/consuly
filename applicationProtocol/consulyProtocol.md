@@ -50,8 +50,6 @@ FORCE_QUIT : asks a client to quit the server
 
 SUCESS_DELETION : server indicates the admin of a group that the group was successfully deleted.
 
-
-
 ### Join a group
 
 LIST : client asks the server for the list of available groups
@@ -64,12 +62,32 @@ VERIFY_PSSWD : the server asks the the client who sent the previous JOIN for the
 
 TRY_PASSWD <password> : client indicates the server that it thinks the password is <password>.
 
-
-
 ### Quit a group
 
 QUIT : the client indicates the server it wants to quit the group its in. 
 
 ACK_QUIT : the server indicates the server that it understood that the client quitted its group
+
+
+
+
+
+### Send preferences
+
+READY_SEND : the client indicates the server that it's ready to send it's preference list. 
+
+READY_RECEIVE : the server indicates the client that it's ready to receive the list.
+
+SENDING_LIKES : the client indicates the server that it will now send what is in the like section of it's user file
+
+SENDING_DISLIKES : the client indicates the server that it will now send what is in the like section of it's user file
+
+SENDING_NEUTRAL : the client indicates the server that it will now send what is in the like section of it's user file
+
+STYLE <name> : client sends a style from it's user file, <name> being the name of the style.
+
+ACK : server indicates client that it correctly received the client's message
+
+FINISHED : client indicates the server that it finished to send it's user list
 
 ## Section 4 - Examples
