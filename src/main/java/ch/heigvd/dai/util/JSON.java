@@ -1,4 +1,4 @@
-package ch.heigvd.test.util;
+package ch.heigvd.dai.util;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -11,6 +11,8 @@ import java.util.LinkedList;
 import java.util.Scanner;
 
 public class JSON {
+    private final String username;
+
     private final String[] styles = {"Pop", "Rock", "Metal", "Classical"};
 
     public enum Taste {
@@ -20,11 +22,16 @@ public class JSON {
     private JSONObject json;
 
     public JSON() {
+        this("unknown");
+    }
+
+    public JSON(String username) {
+        this.username = username;
         json = new JSONObject();
-        if (!new java.io.File("user.json").exists()) {
+        if (!new java.io.File("user" + username + ".json").exists()) {
             create();
         } else {
-            try (FileReader fileIn = new FileReader("user.json")) {
+            try (FileReader fileIn = new FileReader("user" + username + ".json")) {
                 json = new JSONObject(new Scanner(fileIn).useDelimiter("\\A").next());
             } catch (IOException e) {
                 System.err.println("Erreur lors de la lecture du fichier JSON : " + e.getMessage());
