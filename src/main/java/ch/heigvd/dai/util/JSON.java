@@ -1,4 +1,4 @@
-package ch.heigvd.dai.util;
+package ch.heigvd.test.util;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -6,13 +6,15 @@ import org.json.JSONObject;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.Scanner;
 
 public class JSON {
     private final String[] styles = {"Pop", "Rock", "Metal", "Classical"};
 
-    private enum Taste {
-        like, dislike, NOOPINION;
+    public enum Taste {
+        like, dislike, noopinion;
     };
 
     private JSONObject json;
@@ -23,11 +25,38 @@ public class JSON {
             create();
         } else {
             try (FileReader fileIn = new FileReader("user.json")) {
-                json = new JSONObject(new Scanner(fileIn));
+                json = new JSONObject(new Scanner(fileIn).useDelimiter("\\A").next());
             } catch (IOException e) {
                 System.err.println("Erreur lors de la lecture du fichier JSON : " + e.getMessage());
             }
         }
+    }
+
+    public LinkedList<String> getTaste(Taste taste) {
+        LinkedList<String> likes = new LinkedList<>();
+        JSONArray jsonArr = new JSONArray();
+        switch(taste) {
+            case like -> {
+                if (json.has("like")) {
+                    jsonArr = json.getJSONArray("like");
+                }
+            }
+            case dislike -> {
+                if (json.has("dislike")) {
+                    jsonArr = json.getJSONArray("dislike");
+                }
+            }
+            case noopinion -> {
+                if (json.has("noopinion")) {
+                    jsonArr = json.getJSONArray("noopinion");
+                }
+            }
+        }
+
+        for (int i = 0; i < jsonArr.length(); ++i) {
+            likes.add(jsonArr.getString(i) + " ");
+        }
+        return likes;
     }
 
     public void create() {
@@ -38,7 +67,7 @@ public class JSON {
             System.out.println("How do you like : " + style);
 
             String userInput = stdIn.nextLine();  // Read user input
-            while (!userInput.equals("like")  || !userInput.equals("dislike") || !userInput.equals("noopinion")) {
+            while (!userInput.equals(Taste.like.name())  && !userInput.equals(Taste.dislike.name()) && !userInput.equals(Taste.noopinion.name())) {
                 System.out.print("Accepted opinions are : ");
                 showTastes();
                 System.out.println();
@@ -46,14 +75,14 @@ public class JSON {
                 userInput = stdIn.nextLine();
             }
             switch (userInput){
-                case "like": like_list.put(style); break;
+                case "like" : like_list.put(style); break;
                 case "dislike": dislike_list.put(style); break;
                 case "noopinion": noopinion_list.put(style); break;
             }
         }
         json.put(Taste.like.name(), like_list);
         json.put(Taste.dislike.name(), dislike_list);
-        json.put(Taste.NOOPINION.name(), noopinion_list);
+        json.put(Taste.noopinion.name(), noopinion_list);
 
         try (FileWriter fileOut = new FileWriter("user.json")) {
             fileOut.write(json.toString(4)); // Indentation de 4 espaces pour rendre le fichier lisible
@@ -104,7 +133,7 @@ public class JSON {
         if (taste == Taste.like) {
             for (int i = 0; i < nList.length(); ++i) {
                 if (nList.getString(i).equals(style)) {
-                    taste = Taste.NOOPINION;
+                    taste = Taste.noopinion;
                     break;
                 }
             }
@@ -115,18 +144,22 @@ public class JSON {
     @Override
     public String toString() {
         String list = null;
-        JSONArray dislike_list = json.getJSONArray("dislike"), noopinion_list = json.getJSONArray("noopinion"), like_list = json.getJSONArray("like");
+        LinkedList<String> arrTaste = getTaste(Taste.like);
         list = "Like : ";
-        for (int i = 0; i < like_list.length(); ++i) {
-            list += like_list.getString(i) + " ";
+        for (int i = 0; i < arrTaste.size(); ++i) {
+            list += arrTaste.get(i) + " ";
         }
+
+        arrTaste = getTaste(Taste.dislike);
         list += "\nDislike : ";
-        for (int i = 0; i < dislike_list.length(); ++i) {
-            list += dislike_list.getString(i) + " ";
+        for (int i = 0; i < arrTaste.size(); ++i) {
+            list += arrTaste.get(i) + " ";
         }
+
+        arrTaste = getTaste(Taste.noopinion);
         list += "\nNo opinion : ";
-        for (int i = 0; i < noopinion_list.length(); ++i) {
-            list += noopinion_list.getString(i) + " ";
+        for (int i = 0; i < arrTaste.size(); ++i) {
+            list += arrTaste.get(i) + " ";
         }
         return list;
     }
