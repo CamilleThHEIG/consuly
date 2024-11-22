@@ -1,5 +1,6 @@
 package ch.heigvd.dai;
 
+import java.awt.desktop.SystemSleepEvent;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -14,6 +15,7 @@ import java.util.concurrent.Executors;
 import java.util.Date;
 import java.util.concurrent.Callable;
 
+import org.json.JSONArray;
 import picocli.CommandLine;
 
 @CommandLine.Command(name = "server", description = "Launch the server side of the application.")
@@ -56,18 +58,13 @@ public class Server implements Callable<Integer> {
                     BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
                     BufferedWriter out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8))
             ){
-                out.write("Welcome-average giga chad- you must have been waiting for so long to have a decent app ! What kind do you like ?");
-                out.newLine();
-                out.flush(); // Ensure the message is sent to the client
 
                 String userIn;
+                System.out.println("Client connected: " + socket.getInetAddress().getHostAddress());
                 while ((userIn = in.readLine()) != null) {
-                    try {
-                            System.out.println("[Client] " + userIn);
-                            out.write("Congratulations! You've guessed the number, Bye.");
-                            out.flush();
-                    } catch (IOException ex) {
-                        throw new RuntimeException(ex);
+                    // System.out.println("Received : " + userIn);
+                    if (userIn.equals("READY_SEND")){
+                        receiveList(in, out);
                     }
                 }
                 out.newLine();
@@ -76,6 +73,71 @@ public class Server implements Callable<Integer> {
         } catch (IOException e) {
                 System.out.println("Client handling exception: " + e.getMessage());
             }
+        }
+        public void receiveList(BufferedReader in, BufferedWriter out) throws IOException {
+            System.out.println("In receiveList");
+            out.write("READY_RECEIVE\n");
+            out.flush();
+
+            // These lists will then be written in local server files
+            JSONArray like = new JSONArray();
+            JSONArray dislike = new JSONArray();
+            JSONArray noopinion = new JSONArray();
+            JSONArray listToAdd = null;
+
+            boolean keepLoop = true;
+            while (keepLoop) {
+                // System.out.println("Waiting from data client");
+                String userIn = in.readLine();
+                // System.out.println("Received : " + userIn);
+                if (listToAdd != null && userIn.contains("STYLE")){
+                    String res = userIn.substring(5).replace("<", "").replace(">", "");
+                    listToAdd.put(res);
+                    out.write("ACK\n");
+                    out.flush();
+                }
+                switch (userIn) {
+                    case "SENDING_LIKES":
+                        //System.out.println("Case : SENDING_LIKES");
+                        out.write("ACK\n");
+                        out.flush();
+                        listToAdd = like;
+                        break;
+                    case "SENDING_DISLIKES":
+                        //System.out.println("Case : SENDING_DISLIKES");
+                        out.write("ACK\n");
+                        out.flush();
+                        listToAdd = dislike;
+                        break;
+                    case "SENDING_NEUTRAL":
+                        //System.out.println("Case : SENDING_NEUTRAL");
+                        out.write("ACK\n");
+                        out.flush();
+                        listToAdd = noopinion;
+                        break;
+                    case "FINISHED":
+                        // System.out.println("Case : FINISHED");
+                        out.write("ACK\n");
+                        out.flush();
+                        keepLoop = false;
+                        break;
+                }
+            }
+            System.out.println("Like");
+            for (int j = 0 ; j < like.length() ; ++j){
+                System.out.println(like.getString(j));
+            }
+
+            System.out.println("\nDisike");
+            for (int j = 0 ; j < dislike.length() ; ++j){
+                System.out.println(dislike.getString(j));
+            }
+
+            System.out.println("\nNeutral");
+            for (int j = 0 ; j < noopinion.length() ; ++j){
+                System.out.println(dislike.getString(j));
+            }
+            System.out.println("\nEnd of receiveList");
         }
     }
 }
