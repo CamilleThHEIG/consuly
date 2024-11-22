@@ -1,19 +1,12 @@
 package ch.heigvd.dai;
 
-import java.io.FileNotFoundException;
-import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
+import java.io.*;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.util.LinkedList;
+
 import java.util.concurrent.Callable;
 import java.util.Scanner;
-
-import java.io.FileWriter;
 import java.io.IOException;
-
 import picocli.CommandLine;
 import org.json.*;
 
@@ -90,42 +83,40 @@ public class Client implements Callable<Integer> {
     }
 
     private int connect(){
-        System.out.println("Connecting to " + host + ":" + port + "...");
-        try (DatagramSocket socket = new DatagramSocket()) {
-            // Get the server address
-            InetAddress serverAddress = InetAddress.getByName(host);
+        System.out.println("Connecting to host " + host + " on port " + port);
+        try (
+                Socket socket = new Socket(host, port);
+                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)); // BufferedReader to read input from the server
+                PrintWriter out = new PrintWriter(socket.getOutputStream(), true); // PrintWriter to send output to the server
+                BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)); // BufferedReader to read input from the standard input (console)
+        ){
+            System.out.println("Connected successfully!");
 
-            // Transform the message into a byte array - always specify the encoding
-            byte[] buffer = message.getBytes(StandardCharsets.UTF_8);
+            String serverOut, userIn, welcomeMessage;
 
-            // Create a packet with the message, the server address and the port
-            DatagramPacket packet = new DatagramPacket(buffer, buffer.length, serverAddress, port);
+            // Server communication
+            welcomeMessage = in.readLine();
+            System.out.println(welcomeMessage);
 
-            // Send the packet
-            socket.send(packet);
+            while (!socket.isClosed()) {
+                // User input
+                userIn = stdIn.readLine();
+                System.out.println(userIn);
+                out.write(userIn + "\n");
+                out.flush(); // Ensure the message is sent to the server
 
-            System.out.println("[Client] Request sent: " + message);
+                // Server response
+                serverOut = in.readLine();
+                System.out.println("[Server] " + serverOut);
 
-            // Create a buffer for the incoming response
-            byte[] responseBuffer = new byte[1024];
-
-            // Create a packet for the incoming response
-            DatagramPacket responsePacket = new DatagramPacket(responseBuffer, responseBuffer.length);
-
-            // Receive the packet - this is a blocking call
-            socket.receive(responsePacket);
-
-            // Transform the message into a string
-            String response
-                    = new String(
-                    responsePacket.getData(),
-                    responsePacket.getOffset(),
-                    responsePacket.getLength(),
-                    StandardCharsets.UTF_8);
-
-            System.out.println("[Client] Received response: " + response);
-        } catch (Exception e) {
-            System.err.println("[Client] An error occurred: " + e.getMessage());
+                if (serverOut.contains("Congratulations! You've guessed the number, Bye.")) {
+                    socket.close();
+                    break;
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Unable to connect to host " + host + " on port " + port);
+            e.printStackTrace();
         }
         return 0;
     }
