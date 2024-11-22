@@ -44,7 +44,7 @@ public class Server implements Callable<Integer> {
                 System.out.println("[Server] Request received (at " + new Date() + "): " + request);
 
                 // Prepare the response
-                String response = "Hello, client! I'm the server. 👻";
+                String response = "SEND_STYLE";
 
                 // Transform the message into a byte array - always specify the encoding
                 byte[] responseBuffer = response.getBytes(StandardCharsets.UTF_8);
