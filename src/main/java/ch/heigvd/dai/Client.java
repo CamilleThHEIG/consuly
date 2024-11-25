@@ -40,13 +40,18 @@ public class Client implements Callable<Integer> {
             defaultValue = "4446")
     protected int port;
 
+    @CommandLine.Option(
+            names = {"-e", "--edit"},
+            description = "Edit the user preferences.",
+            defaultValue = "false")
+    protected boolean edit;
+
     protected String message, response, answer;
 
     @Override
     public Integer call() throws FileNotFoundException, UnsupportedEncodingException {
-        File userFile = new File("user.json");
-        if (!userFile.exists()) {
-            System.out.println("User file not found, creating one.");
+        // Check if the user doesn't have a list of preferences or wants to edit them
+        if (!new File("user.json").exists() || edit) {
             edit();
         }
 
@@ -187,7 +192,7 @@ public class Client implements Callable<Integer> {
 
     private void sendPreferences(BufferedWriter out, BufferedReader in) throws IOException {
         // this section will later be replaced with cleaner interaction with json
-        try (FileReader reader = new FileReader("userfiles/user.json")) {
+        try (FileReader reader = new FileReader("user.json")) {
             System.out.println("Sending READY_SEND");
             out.write("READY_SEND\n");
             out.flush();

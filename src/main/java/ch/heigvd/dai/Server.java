@@ -42,6 +42,7 @@ public class Server implements Callable<Integer> {
                 ServerSocket serverSocket = new ServerSocket(port); ExecutorService executor = Executors.newFixedThreadPool(NUMBER_OF_THREADS);) {
             System.out.println("Server is listening on port " + port);
             while (!serverSocket.isClosed()) {
+                // Create a new session
                 if (this.create && !ACTIVE_PORTS.contains(port)) {
                     ACTIVE_PORTS.add(port);
                 }
@@ -71,9 +72,12 @@ public class Server implements Callable<Integer> {
                     BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)); BufferedWriter out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8))) {
                 while ((userIn = in.readLine()) != null) {
                     System.out.println("[Client] " + userIn);
+
+                    // Check if a session is active on the port
                     if (userIn.equals("CHECK_SESSION")) {
-                        out.write("What is your port:\n");
+                        out.write("What is the port your try to join:\n");
                         out.flush();
+                        
                         userIn = in.readLine();
                         if (isSessionActive(Integer.parseInt(userIn))) {
                             out.write("SESSION_ACTIVE\n");
