@@ -19,14 +19,13 @@ import java.util.concurrent.Callable;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import ch.heigvd.dai.group.JoinSession;
 import picocli.CommandLine;
 
 /*
     * This class is the entry point for the client side of the application. It is
     * responsible for connecting to the server and sending messages to it.
  */
-@CommandLine.Command(name = "client", description = "Launch the client side of the application.", subcommands = {JoinSession.class})
+@CommandLine.Command(name = "client", description = "Launch the client side of the application.")
 public class Client implements Callable<Integer> {
 
     @CommandLine.Option(
@@ -41,17 +40,10 @@ public class Client implements Callable<Integer> {
             defaultValue = "4446")
     protected int port;
 
-    protected String message = "Hello, server! I'm the client. 🤖";
+    protected String message, response, answer;
 
     @Override
     public Integer call() throws FileNotFoundException, UnsupportedEncodingException {
-        // if (edit) {
-        //     edit();
-        //     return 0;
-        // } else {
-        //     return connect();
-        // }
-
         File userFile = new File("user.json");
         if (!userFile.exists()) {
             System.out.println("User file not found, creating one.");
@@ -59,25 +51,24 @@ public class Client implements Callable<Integer> {
         }
 
         try (Socket socket = new Socket(host, port); BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)); PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
+            // Check if a session is active on the port
             out.println("CHECK_SESSION");
-            String response = in.readLine();
+            response = in.readLine();
             out.println(port);
             response = in.readLine();
             if (response.equals("SESSION_ACTIVE")) {
                 System.out.println("An active session was found on this port.");
                 System.out.println("Do you want to join it? (y/n)");
                 Scanner scanner = new Scanner(System.in);
-                String answer = scanner.nextLine();
-                if ("y".equals(answer)) {
-                    return connect();
+                answer = scanner.nextLine();
+                if (answer.equals("y")) {
+                    return connect(); // Join the session
                 }
-            } else if(response.equals("CONNECTION_REFUSED")) {
+            } else if (response.equals("CONNECTION_REFUSED")) {
                 System.out.println("No active session found on this port.");
                 return 1;
             }
-
-            System.out.println("No active session found on this port.");
-            return 1;
+            return 0;
         } catch (IOException e) {
             System.out.println("Unable to connect to host " + host + " on port " + port);
             return 1;
@@ -136,9 +127,8 @@ public class Client implements Callable<Integer> {
                  PrintWriter out = new PrintWriter(socket.getOutputStream(), true); // PrintWriter to send output to the server
                  BufferedWriter out2 = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8)); BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)); // BufferedReader to read input from the standard input (console)
                 ) {
-            System.out.println("Connected successfully!");
-            String serverOut, userIn, welcomeMessage;
-            // Server communication
+            System.out.println("Connected successfully! On session " + port);
+
             sendPreferences(out2, in);
 
             /*
@@ -233,10 +223,5 @@ public class Client implements Callable<Integer> {
         } catch (IOException e) {
             System.err.println("Erreur lors de la lecture du fichier JSON : " + e.getMessage());
         }
-    }
-
-    public void executeJoinSession(int port) {
-        String[] args = {"join", "--port", String.valueOf(port)};
-        new CommandLine(new JoinSession()).execute(args);
     }
 }

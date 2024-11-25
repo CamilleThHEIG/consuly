@@ -8,21 +8,20 @@ import java.io.OutputStreamWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedList;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.json.JSONArray;
 
-import ch.heigvd.dai.group.CreateSession;
-import ch.heigvd.dai.group.DeleteSession;
 import picocli.CommandLine;
 
-@CommandLine.Command(name = "server", description = "Launch the server side of the application.", subcommands = {CreateSession.class, DeleteSession.class})
+@CommandLine.Command(name = "server", description = "Launch the server side of the application.")
 public class Server implements Callable<Integer> {
 
     private static final int NUMBER_OF_THREADS = 5;
-    private static final int[] ACTIVE_PORTS = {};
+    private static final LinkedList<Integer> ACTIVE_PORTS = new LinkedList();
 
     @CommandLine.Option(
             names = {"-p", "--port"},
@@ -30,12 +29,23 @@ public class Server implements Callable<Integer> {
             defaultValue = "4446")
     protected int port;
 
+    @CommandLine.Option(
+            names = {"-c", "--create"},
+            description = "Create a new session.",
+            defaultValue = "true",
+            required = true)
+    protected boolean create;
+
     @Override
     public Integer call() {
         try (
                 ServerSocket serverSocket = new ServerSocket(port); ExecutorService executor = Executors.newFixedThreadPool(NUMBER_OF_THREADS);) {
             System.out.println("Server is listening on port " + port);
             while (!serverSocket.isClosed()) {
+                if (this.create && !ACTIVE_PORTS.contains(port)) {
+                    ACTIVE_PORTS.add(port);
+                }
+
                 Socket socket = serverSocket.accept(); // Accept a client connection
                 System.out.println("New client connected: " + socket.getInetAddress().getHostAddress());
                 executor.submit(new ClientHandler(socket));
@@ -62,7 +72,8 @@ public class Server implements Callable<Integer> {
                 while ((userIn = in.readLine()) != null) {
                     System.out.println("[Client] " + userIn);
                     if (userIn.equals("CHECK_SESSION")) {
-                        out.write("What is your port:\n"); out.flush();
+                        out.write("What is your port:\n");
+                        out.flush();
                         userIn = in.readLine();
                         if (isSessionActive(Integer.parseInt(userIn))) {
                             out.write("SESSION_ACTIVE\n");
