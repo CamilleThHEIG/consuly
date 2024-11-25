@@ -62,13 +62,13 @@ public class Client implements Callable<Integer> {
             out.println(port);
             response = in.readLine();
             if (response.equals("SESSION_ACTIVE")) {
-                System.out.println("An active session was found on this port.");
-                System.out.println("Do you want to join it? (y/n)");
-                Scanner scanner = new Scanner(System.in);
-                answer = scanner.nextLine();
-                if (answer.equals("y")) {
+                // System.out.println("An active session was found on this port.");
+                // System.out.println("Do you want to join it? (y/n)");
+                // Scanner scanner = new Scanner(System.in);
+                // answer = scanner.nextLine();
+                //if (answer.equals("y")) {
                     return connect(); // Join the session
-                }
+                //}
             } else if (response.equals("CONNECTION_REFUSED")) {
                 System.out.println("No active session found on this port.");
                 return 1;
@@ -133,8 +133,19 @@ public class Client implements Callable<Integer> {
                  BufferedWriter out2 = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8)); BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)); // BufferedReader to read input from the standard input (console)
                 ) {
             System.out.println("Connected successfully! On session " + port);
+            out.write("CONNECTED\n");
+            out.flush();
 
-            sendPreferences(out2, in);
+            message = stdIn.readLine();
+            out.println(message);
+            response = in.readLine();
+            System.out.println("[Server] " + response);
+            response = in.readLine();
+            System.out.println(response);
+            response = in.readLine();
+            System.out.println(response);
+            response = in.readLine();
+            System.out.println(response);
 
             /*
             while (!socket.isClosed()) {

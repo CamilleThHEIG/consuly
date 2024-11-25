@@ -77,7 +77,7 @@ public class Server implements Callable<Integer> {
                     if (userIn.equals("CHECK_SESSION")) {
                         out.write("What is the port your try to join:\n");
                         out.flush();
-                        
+
                         userIn = in.readLine();
                         if (isSessionActive(Integer.parseInt(userIn))) {
                             out.write("SESSION_ACTIVE\n");
@@ -89,8 +89,16 @@ public class Server implements Callable<Integer> {
                         }
                     }
 
-                    if (userIn.equals("READY_SEND")) {
-                        receiveList(in, out);
+                    if (userIn.equals("CONNECTED")) {
+                        out.write("Choose an option ?\n1. Create a group\n2. Delete a group\n3. Join a group\n");
+                        out.flush();
+                    }
+
+                    // Action of the client
+                    switch (userIn) {
+                        case "1" -> System.out.println("In case 1"); //createGroup();
+                        case "2" -> System.out.println("In case 2"); //deleteGroup();
+                        case "3" -> System.out.println("In case 3"); //joinGroup();
                     }
                 }
             } catch (IOException e) {
