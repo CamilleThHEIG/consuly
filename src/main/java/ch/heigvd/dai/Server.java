@@ -22,6 +22,7 @@ import picocli.CommandLine;
 public class Server implements Callable<Integer> {
 
     private static final int NUMBER_OF_THREADS = 5;
+    private static final int[] ACTIVE_PORTS = {};
 
     @CommandLine.Option(
             names = {"-p", "--port"},
@@ -58,8 +59,21 @@ public class Server implements Callable<Integer> {
         public void run() {
             try (
                     BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)); BufferedWriter out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8))) {
-                //System.out.println("Client connected: " + socket.getInetAddress().getHostAddress());
                 while ((userIn = in.readLine()) != null) {
+                    System.out.println("[Client] " + userIn);
+                    if (userIn.equals("CHECK_SESSION")) {
+                        out.write("What is your port:\n"); out.flush();
+                        userIn = in.readLine();
+                        if (isSessionActive(Integer.parseInt(userIn))) {
+                            out.write("SESSION_ACTIVE\n");
+                            out.flush();
+                        } else {
+                            out.write("CONNECTION_REFUSED\n");
+                            out.flush();
+                            continue;
+                        }
+                    }
+
                     if (userIn.equals("READY_SEND")) {
                         receiveList(in, out);
                     }
@@ -67,6 +81,15 @@ public class Server implements Callable<Integer> {
             } catch (IOException e) {
                 System.out.println("Client handling exception: " + e.getMessage());
             }
+        }
+
+        private boolean isSessionActive(int port) {
+            for (int activePort : ACTIVE_PORTS) {
+                if (activePort == port) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         public void receiveList(BufferedReader in, BufferedWriter out) throws IOException {
@@ -128,15 +151,5 @@ public class Server implements Callable<Integer> {
             }
             System.out.println("\nEnd of receiveList");
         }
-    }
-
-    public void executeCreateSession(int port) {
-        String[] args = {"create", "--port", String.valueOf(port)};
-        new CommandLine(new CreateSession()).execute(args);
-    }
-
-    public void executeDeleteSession(int port) {
-        String[] args = {"delete", "--port", String.valueOf(port)};
-        new CommandLine(new DeleteSession()).execute(args);
     }
 }

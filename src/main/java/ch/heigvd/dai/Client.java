@@ -2,6 +2,7 @@ package ch.heigvd.dai;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -21,6 +22,10 @@ import org.json.JSONObject;
 import ch.heigvd.dai.group.JoinSession;
 import picocli.CommandLine;
 
+/*
+    * This class is the entry point for the client side of the application. It is
+    * responsible for connecting to the server and sending messages to it.
+ */
 @CommandLine.Command(name = "client", description = "Launch the client side of the application.", subcommands = {JoinSession.class})
 public class Client implements Callable<Integer> {
 
@@ -36,21 +41,46 @@ public class Client implements Callable<Integer> {
             defaultValue = "4446")
     protected int port;
 
-    @CommandLine.Option(
-            names = {"-e", "--e"},
-            description = "Include this if you want to edit your preferences json file.",
-            defaultValue = "False")
-    protected boolean edit;
-
     protected String message = "Hello, server! I'm the client. 🤖";
 
     @Override
     public Integer call() throws FileNotFoundException, UnsupportedEncodingException {
-        if (edit) {
+        // if (edit) {
+        //     edit();
+        //     return 0;
+        // } else {
+        //     return connect();
+        // }
+
+        File userFile = new File("user.json");
+        if (!userFile.exists()) {
+            System.out.println("User file not found, creating one.");
             edit();
-            return 0;
-        } else {
-            return connect();
+        }
+
+        try (Socket socket = new Socket(host, port); BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)); PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
+            out.println("CHECK_SESSION");
+            String response = in.readLine();
+            out.println(port);
+            response = in.readLine();
+            if (response.equals("SESSION_ACTIVE")) {
+                System.out.println("An active session was found on this port.");
+                System.out.println("Do you want to join it? (y/n)");
+                Scanner scanner = new Scanner(System.in);
+                String answer = scanner.nextLine();
+                if ("y".equals(answer)) {
+                    return connect();
+                }
+            } else if(response.equals("CONNECTION_REFUSED")) {
+                System.out.println("No active session found on this port.");
+                return 1;
+            }
+
+            System.out.println("No active session found on this port.");
+            return 1;
+        } catch (IOException e) {
+            System.out.println("Unable to connect to host " + host + " on port " + port);
+            return 1;
         }
     }
 
