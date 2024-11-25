@@ -1,6 +1,5 @@
 package ch.heigvd.dai;
 
-import java.awt.desktop.SystemSleepEvent;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -9,17 +8,19 @@ import java.io.OutputStreamWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import java.util.Date;
-import java.util.concurrent.Callable;
-
 import org.json.JSONArray;
+
+import ch.heigvd.dai.group.CreateSession;
+import ch.heigvd.dai.group.DeleteSession;
 import picocli.CommandLine;
 
-@CommandLine.Command(name = "server", description = "Launch the server side of the application.")
+@CommandLine.Command(name = "server", description = "Launch the server side of the application.", subcommands = {CreateSession.class, DeleteSession.class})
 public class Server implements Callable<Integer> {
+
     private static final int NUMBER_OF_THREADS = 5;
 
     @CommandLine.Option(
@@ -30,11 +31,11 @@ public class Server implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        System.out.println("Server is listening on port " + port);
         try (
                 ServerSocket serverSocket = new ServerSocket(port); ExecutorService executor = Executors.newFixedThreadPool(NUMBER_OF_THREADS);) {
+            System.out.println("Server is listening on port " + port);
             while (!serverSocket.isClosed()) {
-                Socket socket = serverSocket.accept(); // Accept the client connection
+                Socket socket = serverSocket.accept(); // Accept a client connection
                 System.out.println("New client connected: " + socket.getInetAddress().getHostAddress());
                 executor.submit(new ClientHandler(socket));
             }
@@ -45,8 +46,9 @@ public class Server implements Callable<Integer> {
     }
 
     static class ClientHandler implements Runnable {
+
         private final Socket socket;
-        private static final int LOWERBOUND = 1, UPPERBOUND = 100;
+        private String userIn;
 
         public ClientHandler(Socket socket) {
             this.socket = socket;
@@ -55,25 +57,18 @@ public class Server implements Callable<Integer> {
         @Override
         public void run() {
             try (
-                    BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
-                    BufferedWriter out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8))
-            ){
-
-                String userIn;
-                System.out.println("Client connected: " + socket.getInetAddress().getHostAddress());
+                    BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)); BufferedWriter out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8))) {
+                //System.out.println("Client connected: " + socket.getInetAddress().getHostAddress());
                 while ((userIn = in.readLine()) != null) {
-                    // System.out.println("Received : " + userIn);
-                    if (userIn.equals("READY_SEND")){
+                    if (userIn.equals("READY_SEND")) {
                         receiveList(in, out);
                     }
                 }
-                out.newLine();
-                out.flush(); // Ensure the message is sent to the client
-
-        } catch (IOException e) {
+            } catch (IOException e) {
                 System.out.println("Client handling exception: " + e.getMessage());
             }
         }
+
         public void receiveList(BufferedReader in, BufferedWriter out) throws IOException {
             System.out.println("In receiveList");
             out.write("READY_RECEIVE\n");
@@ -87,10 +82,8 @@ public class Server implements Callable<Integer> {
 
             boolean keepLoop = true;
             while (keepLoop) {
-                // System.out.println("Waiting from data client");
                 String userIn = in.readLine();
-                // System.out.println("Received : " + userIn);
-                if (listToAdd != null && userIn.contains("STYLE")){
+                if (listToAdd != null && userIn.contains("STYLE")) {
                     String res = userIn.substring(5).replace("<", "").replace(">", "");
                     listToAdd.put(res);
                     out.write("ACK\n");
@@ -98,25 +91,21 @@ public class Server implements Callable<Integer> {
                 }
                 switch (userIn) {
                     case "SENDING_LIKES":
-                        //System.out.println("Case : SENDING_LIKES");
                         out.write("ACK\n");
                         out.flush();
                         listToAdd = like;
                         break;
                     case "SENDING_DISLIKES":
-                        //System.out.println("Case : SENDING_DISLIKES");
                         out.write("ACK\n");
                         out.flush();
                         listToAdd = dislike;
                         break;
                     case "SENDING_NEUTRAL":
-                        //System.out.println("Case : SENDING_NEUTRAL");
                         out.write("ACK\n");
                         out.flush();
                         listToAdd = noopinion;
                         break;
                     case "FINISHED":
-                        // System.out.println("Case : FINISHED");
                         out.write("ACK\n");
                         out.flush();
                         keepLoop = false;
@@ -124,20 +113,30 @@ public class Server implements Callable<Integer> {
                 }
             }
             System.out.println("Like");
-            for (int j = 0 ; j < like.length() ; ++j){
+            for (int j = 0; j < like.length(); ++j) {
                 System.out.println(like.getString(j));
             }
 
             System.out.println("\nDisike");
-            for (int j = 0 ; j < dislike.length() ; ++j){
+            for (int j = 0; j < dislike.length(); ++j) {
                 System.out.println(dislike.getString(j));
             }
 
             System.out.println("\nNeutral");
-            for (int j = 0 ; j < noopinion.length() ; ++j){
-                System.out.println(dislike.getString(j));
+            for (int j = 0; j < noopinion.length(); ++j) {
+                System.out.println(noopinion.getString(j));
             }
             System.out.println("\nEnd of receiveList");
         }
+    }
+
+    public void executeCreateSession(int port) {
+        String[] args = {"create", "--port", String.valueOf(port)};
+        new CommandLine(new CreateSession()).execute(args);
+    }
+
+    public void executeDeleteSession(int port) {
+        String[] args = {"delete", "--port", String.valueOf(port)};
+        new CommandLine(new DeleteSession()).execute(args);
     }
 }

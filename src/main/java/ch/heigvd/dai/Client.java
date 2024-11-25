@@ -1,16 +1,27 @@
 package ch.heigvd.dai;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-
-import java.util.concurrent.Callable;
 import java.util.Scanner;
-import java.io.IOException;
-import picocli.CommandLine;
-import org.json.*;
+import java.util.concurrent.Callable;
 
-@CommandLine.Command(name = "client", description = "Launch the client side of the application.")
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import ch.heigvd.dai.group.JoinSession;
+import picocli.CommandLine;
+
+@CommandLine.Command(name = "client", description = "Launch the client side of the application.", subcommands = {JoinSession.class})
 public class Client implements Callable<Integer> {
 
     @CommandLine.Option(
@@ -35,7 +46,7 @@ public class Client implements Callable<Integer> {
 
     @Override
     public Integer call() throws FileNotFoundException, UnsupportedEncodingException {
-        if (edit){
+        if (edit) {
             edit();
             return 0;
         } else {
@@ -54,18 +65,24 @@ public class Client implements Callable<Integer> {
         Scanner myObj = new Scanner(System.in);  // Create a Scanner object
 
         System.out.println("Please indicate how much you like these styles (with 'like', 'dislike', 'noopinion'.");
-        for (String style : styles_list){
+        for (String style : styles_list) {
             System.out.println("How do you like : " + style);
 
             String userInput = myObj.nextLine();  // Read user input
-            while (!userInput.equals("like")  && !userInput.equals("dislike") && !userInput.equals("noopinion")) {
+            while (!userInput.equals("like") && !userInput.equals("dislike") && !userInput.equals("noopinion")) {
                 System.out.println("Try again");
                 userInput = myObj.nextLine();
             }
-            switch (userInput){
-                case "like": like_list.put(style); break;
-                case "dislike": dislike_list.put(style); break;
-                case "noopinion": noopinion_list.put(style); break;
+            switch (userInput) {
+                case "like":
+                    like_list.put(style);
+                    break;
+                case "dislike":
+                    dislike_list.put(style);
+                    break;
+                case "noopinion":
+                    noopinion_list.put(style);
+                    break;
             }
         }
         JSONObject jo = new JSONObject();
@@ -82,16 +99,13 @@ public class Client implements Callable<Integer> {
         }
     }
 
-    private int connect(){
+    private int connect() {
         System.out.println("Connecting to host " + host + " on port " + port);
         try (
-                Socket socket = new Socket(host, port);
-                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)); // BufferedReader to read input from the server
-
-                PrintWriter out = new PrintWriter(socket.getOutputStream(), true); // PrintWriter to send output to the server
-                BufferedWriter out2 = new BufferedWriter( new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
-                        BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)); // BufferedReader to read input from the standard input (console)
-        ){
+                Socket socket = new Socket(host, port); BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)); // BufferedReader to read input from the server
+                 PrintWriter out = new PrintWriter(socket.getOutputStream(), true); // PrintWriter to send output to the server
+                 BufferedWriter out2 = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8)); BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)); // BufferedReader to read input from the standard input (console)
+                ) {
             System.out.println("Connected successfully!");
             String serverOut, userIn, welcomeMessage;
             // Server communication
@@ -116,14 +130,12 @@ public class Client implements Callable<Integer> {
                 }
             }
              */
-
         } catch (IOException e) {
             System.out.println("Unable to connect to host " + host + " on port " + port);
             e.printStackTrace();
         }
         return 0;
     }
-
 
     private void sendAckExpectedMessage(BufferedWriter out, BufferedReader in, String message) throws IOException {
         String serverResponse;
@@ -138,10 +150,9 @@ public class Client implements Callable<Integer> {
         }
     }
 
-
     private void sendList(BufferedWriter out, BufferedReader in, JSONArray list_to_send) throws IOException {
         String serverResponse;
-        for (int j = 0 ; j < list_to_send.length() ; ++j) {
+        for (int j = 0; j < list_to_send.length(); ++j) {
             message = "STYLE<" + list_to_send.getString(j) + ">";
             System.out.println("Sending : " + message);
             out.write(message + "\n");
@@ -189,9 +200,13 @@ public class Client implements Callable<Integer> {
             sendList(out, in, noopinion);
             sendAckExpectedMessage(out, in, "FINISHED");
 
-
         } catch (IOException e) {
             System.err.println("Erreur lors de la lecture du fichier JSON : " + e.getMessage());
         }
+    }
+
+    public void executeJoinSession(int port) {
+        String[] args = {"join", "--port", String.valueOf(port)};
+        new CommandLine(new JoinSession()).execute(args);
     }
 }
