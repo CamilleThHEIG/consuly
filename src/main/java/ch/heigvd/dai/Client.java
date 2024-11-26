@@ -27,6 +27,7 @@ import picocli.CommandLine;
  */
 @CommandLine.Command(name = "client", description = "Launch the client side of the application.")
 public class Client implements Callable<Integer> {
+    private static final String EOT = "\u0004";
 
     @CommandLine.Option(
             names = {"-h", "--host"},
@@ -136,16 +137,31 @@ public class Client implements Callable<Integer> {
             out.write("CONNECTED\n");
             out.flush();
 
-            message = stdIn.readLine();
-            out.println(message);
+ // Client reads the message until it finds EOT
+            String response;
+            while ((response = in.readLine()) != null && !response.equals(EOT)) {
+                System.out.println("[Server] " + response);
+            }
+
+            // Client chooses an option
+            System.out.print("Enter your message: ");
+            String message = stdIn.readLine();
+            out.write(message + "\n");
+            out.flush();
+
+            // Read server response after sending the message
             response = in.readLine();
             System.out.println("[Server] " + response);
-            response = in.readLine();
-            System.out.println(response);
-            response = in.readLine();
-            System.out.println(response);
-            response = in.readLine();
-            System.out.println(response);
+
+            // out.println(message);
+            // response = in.readLine();
+            // System.out.println("[Server] " + response);
+            // response = in.readLine();
+            // System.out.println(response);
+            // response = in.readLine();
+            // System.out.println(response);
+            // response = in.readLine();
+            // System.out.println(response);
 
             /*
             while (!socket.isClosed()) {

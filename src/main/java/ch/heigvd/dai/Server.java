@@ -22,6 +22,7 @@ public class Server implements Callable<Integer> {
 
     private static final int NUMBER_OF_THREADS = 5;
     private static final LinkedList<Integer> ACTIVE_PORTS = new LinkedList();
+    private static final String EOT = "\u0004";
 
     @CommandLine.Option(
             names = {"-p", "--port"},
@@ -75,7 +76,7 @@ public class Server implements Callable<Integer> {
 
                     // Check if a session is active on the port
                     if (userIn.equals("CHECK_SESSION")) {
-                        out.write("What is the port your try to join:\n");
+                        out.write("What is the port your try to join: \n");
                         out.flush();
 
                         userIn = in.readLine();
@@ -90,8 +91,35 @@ public class Server implements Callable<Integer> {
                     }
 
                     if (userIn.equals("CONNECTED")) {
-                        out.write("Choose an option ?\n1. Create a group\n2. Delete a group\n3. Join a group\n");
+                        out.write("Choose an option ?\n");
+                        out.write("1. Create a group\n");
+                        out.write("2. Delete a group\n");
+                        out.write("3. Join a group\n");
+                        out.write(EOT + "\n");
                         out.flush();
+                    } else {
+                        // Action of the client
+                        switch (userIn) {
+                            case "1" -> {
+                                System.out.println("In case 1");
+                                out.write("Group created.\n");
+                                out.flush();
+                            }
+                            case "2" -> {
+                                System.out.println("In case 2");
+                                out.write("Group deleted.\n");
+                                out.flush();
+                            }
+                            case "3" -> {
+                                System.out.println("In case 3");
+                                out.write("Joined group.\n");
+                                out.flush();
+                            }
+                            default -> {
+                                out.write("Invalid option.\n");
+                                out.flush();
+                            }
+                        }
                     }
 
                     // Action of the client
