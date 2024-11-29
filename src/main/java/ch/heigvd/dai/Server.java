@@ -13,18 +13,22 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import ch.heigvd.dai.util.Group;
+import java.util.concurrent.Callable;
+
 import org.json.JSONArray;
 
 import picocli.CommandLine;
+import ch.heigvd.dai.util.JSON;
+import ch.heigvd.dai.util.Group;
+
 
 @CommandLine.Command(name = "server", description = "Launch the server side of the application.")
 public class Server implements Callable<Integer> {
-
     private final int NUMBER_OF_THREADS;
     private static final LinkedList<Integer> ACTIVE_PORTS;
     private static LinkedList<Group> groups;
     private static final String EOT;
+    private static int lastClientIdUsed = 2;
 
     static {
         ACTIVE_PORTS = new LinkedList();
@@ -32,9 +36,10 @@ public class Server implements Callable<Integer> {
     }
 
     {
-         NUMBER_OF_THREADS = 5;
+        NUMBER_OF_THREADS = 5;
         groups = new LinkedList<>();
     }
+
 
     @CommandLine.Option(
             names = {"-p", "--port"},
@@ -42,24 +47,12 @@ public class Server implements Callable<Integer> {
             defaultValue = "4446")
     protected int port;
 
-    @CommandLine.Option(
-            names = {"-c", "--create"},
-            description = "Create a new session.",
-            defaultValue = "true",
-            required = true)
-    protected boolean create;
-
     @Override
     public Integer call() {
         try (
                 ServerSocket serverSocket = new ServerSocket(port); ExecutorService executor = Executors.newFixedThreadPool(NUMBER_OF_THREADS);) {
             System.out.println("Server is listening on port " + port);
             while (!serverSocket.isClosed()) {
-                // Create a new session
-                if (this.create && !ACTIVE_PORTS.contains(port)) {
-                    ACTIVE_PORTS.add(port);
-                }
-
                 Socket socket = serverSocket.accept(); // Accept a client connection
                 System.out.println("New client connected: " + socket.getInetAddress().getHostAddress());
                 executor.submit(new ClientHandler(socket));
@@ -144,6 +137,7 @@ public class Server implements Callable<Integer> {
             }
         }
 
+
         private static void createGroup(BufferedWriter out, BufferedReader in) throws IOException {
             out.write("Enter the name of the group: "); out.write(EOT); out.flush();
             String name = in.readLine();
@@ -204,6 +198,13 @@ public class Server implements Callable<Integer> {
             return false;
         }
 
+        /**
+         * What to do to receive a list from a user
+         * @param in
+         * @param out
+         * @throws IOException
+         */
+
         public void receiveList(BufferedReader in, BufferedWriter out) throws IOException {
             System.out.println("In receiveList");
             out.write("READY_RECEIVE\n");
@@ -218,7 +219,7 @@ public class Server implements Callable<Integer> {
             boolean keepLoop = true;
             while (keepLoop) {
                 String userIn = in.readLine();
-                if (listToAdd != null && userIn.contains("STYLE")) {
+                if (listToAdd != null && userIn.contains("STYLE")){
                     String res = userIn.substring(5).replace("<", "").replace(">", "");
                     listToAdd.put(res);
                     out.write("ACK\n");
@@ -247,7 +248,6 @@ public class Server implements Callable<Integer> {
                         break;
                 }
             }
-
             System.out.println("Like");
             for (int j = 0; j < like.length(); ++j) {
                 System.out.println(like.getString(j));
@@ -262,7 +262,11 @@ public class Server implements Callable<Integer> {
             for (int j = 0; j < noopinion.length(); ++j) {
                 System.out.println(noopinion.getString(j));
             }
-            System.out.println("\nEnd of receiveList");
+
+            // write the result
+            JSON json = new JSON(lastClientIdUsed);
+            json.writeFileWithLists(like, dislike, noopinion);
         }
     }
+
 }

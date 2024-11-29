@@ -2,7 +2,6 @@ package ch.heigvd.dai;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -13,18 +12,23 @@ import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+
+import java.util.concurrent.Callable;
+import java.io.IOException;
+
+import ch.heigvd.dai.util.JSON;
+import picocli.CommandLine;
+import org.json.*;
+
 import java.util.Scanner;
 import java.util.concurrent.Callable;
+
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import picocli.CommandLine;
 
-/*
-    * This class is the entry point for the client side of the application. It is
-    * responsible for connecting to the server and sending messages to it.
- */
 @CommandLine.Command(name = "client", description = "Launch the client side of the application.")
 public class Client implements Callable<Integer> {
     private static final String EOT = "\u0004";
@@ -42,97 +46,36 @@ public class Client implements Callable<Integer> {
     protected int port;
 
     @CommandLine.Option(
-            names = {"-e", "--edit"},
-            description = "Edit the user preferences.",
-            defaultValue = "false")
+            names = {"-e", "--e"},
+            description = "Include this if you want to edit your preferences json file.",
+            defaultValue = "False")
     protected boolean edit;
 
-    protected String message, response, answer;
+    protected String message = "Hello, server! I'm the client. 🤖";
 
     @Override
     public Integer call() throws FileNotFoundException, UnsupportedEncodingException {
-        // Check if the user doesn't have a list of preferences or wants to edit them
-        if (!new File("user.json").exists() || edit) {
+        if (edit) {
             edit();
-        }
-
-        try (Socket socket = new Socket(host, port); BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)); PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
-            // Check if a session is active on the port
-            out.println("CHECK_SESSION");
-            response = in.readLine();
-            out.println(port);
-            response = in.readLine();
-            if (response.equals("SESSION_ACTIVE")) {
-                // System.out.println("An active session was found on this port.");
-                // System.out.println("Do you want to join it? (y/n)");
-                // Scanner scanner = new Scanner(System.in);
-                // answer = scanner.nextLine();
-                //if (answer.equals("y")) {
-                    return connect(); // Join the session
-                //}
-            } else if (response.equals("CONNECTION_REFUSED")) {
-                System.out.println("No active session found on this port.");
-                return 1;
-            }
             return 0;
-        } catch (IOException e) {
-            System.out.println("Unable to connect to host " + host + " on port " + port);
-            return 1;
+        } else {
+            return connectToServer();
         }
     }
 
-    private void edit() throws FileNotFoundException, UnsupportedEncodingException {
-        // Took first ten from https://www.musicianwave.com/top-music-genres/
-        String[] styles_list = {"Pop", "Rock", "Rap", "Jazz", "Blues", "Folk", "Metal", "Country", "Classical"};
-
-        JSONArray dislike_list = new JSONArray();
-        JSONArray noopinion_list = new JSONArray();
-        JSONArray like_list = new JSONArray();
-
-        Scanner myObj = new Scanner(System.in);  // Create a Scanner object
-
-        System.out.println("Please indicate how much you like these styles (with 'like', 'dislike', 'noopinion'.");
-        for (String style : styles_list) {
-            System.out.println("How do you like : " + style);
-
-            String userInput = myObj.nextLine();  // Read user input
-            while (!userInput.equals("like") && !userInput.equals("dislike") && !userInput.equals("noopinion")) {
-                System.out.println("Try again");
-                userInput = myObj.nextLine();
-            }
-            switch (userInput) {
-                case "like":
-                    like_list.put(style);
-                    break;
-                case "dislike":
-                    dislike_list.put(style);
-                    break;
-                case "noopinion":
-                    noopinion_list.put(style);
-                    break;
-            }
-        }
-        JSONObject jo = new JSONObject();
-        jo.put("like", like_list);
-        jo.put("dislike", dislike_list);
-        jo.put("noopinion", noopinion_list);
-
-        try (FileWriter file = new FileWriter("user.json")) {
-            file.write(jo.toString(4)); // Indentation de 4 espaces pour rendre le fichier lisible
-            file.flush();
-            System.out.println("Fichier JSON sauvegardé avec succès !");
-        } catch (IOException e) {
-            System.err.println("Erreur lors de l'écriture du fichier JSON : " + e.getMessage());
-        }
+    private void edit(){
+        System.out.println("In edit2");
+        JSON json = new JSON();
+        json.createByAsking();
     }
 
-    private int connect() {
+    private int connectToServer() {
         System.out.println("Connecting to host " + host + " on port " + port);
         try (
                 Socket socket = new Socket(host, port); BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)); // BufferedReader to read input from the server
-                 PrintWriter out = new PrintWriter(socket.getOutputStream(), true); // PrintWriter to send output to the server
-                 BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)); // BufferedReader to read input from the standard input (console)
-                ) {
+                PrintWriter out = new PrintWriter(socket.getOutputStream(), true); // PrintWriter to send output to the server
+                BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)); // BufferedReader to read input from the standard input (console)
+        ) {
             System.out.println("Connected successfully! On session " + port);
             out.write("CONNECTED\n");
             out.flush();
@@ -167,9 +110,15 @@ public class Client implements Callable<Integer> {
         return 0;
     }
 
+    /**
+     * send a message that expects ACK from the server
+     * @param out
+     * @param in
+     * @param message
+     * @throws IOException
+     */
     private void sendAckExpectedMessage(BufferedWriter out, BufferedReader in, String message) throws IOException {
         String serverResponse;
-        //System.out.println("Sending :" + message);
         out.write(message + "\n");
         out.flush();
         serverResponse = in.readLine();
@@ -180,6 +129,13 @@ public class Client implements Callable<Integer> {
         }
     }
 
+    /**
+     * send a sublist (the like list for example) to server
+     * @param out
+     * @param in
+     * @param list_to_send
+     * @throws IOException
+     */
     private void sendList(BufferedWriter out, BufferedReader in, JSONArray list_to_send) throws IOException {
         String serverResponse;
         for (int j = 0; j < list_to_send.length(); ++j) {
@@ -195,9 +151,15 @@ public class Client implements Callable<Integer> {
         }
     }
 
+    /**
+     * send the local preference list to the server
+     * @param out out buffer to user
+     * @param in buffer to receive message from server
+     * @throws IOException
+     */
     private void sendPreferences(BufferedWriter out, BufferedReader in) throws IOException {
         // this section will later be replaced with cleaner interaction with json
-        try (FileReader reader = new FileReader("user.json")) {
+        try (FileReader reader = new FileReader("userfiles/user0.json")) {
             System.out.println("Sending READY_SEND");
             out.write("READY_SEND\n");
             out.flush();
@@ -220,7 +182,6 @@ public class Client implements Callable<Integer> {
             JSONArray like = jsonObject.getJSONArray("like");
             JSONArray dislike = jsonObject.getJSONArray("dislike");
             JSONArray noopinion = jsonObject.getJSONArray("noopinion");
-            String message = "";
 
             sendAckExpectedMessage(out, in, "SENDING_LIKES");
             sendList(out, in, like);
