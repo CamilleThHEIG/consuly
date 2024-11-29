@@ -131,57 +131,35 @@ public class Client implements Callable<Integer> {
         try (
                 Socket socket = new Socket(host, port); BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)); // BufferedReader to read input from the server
                  PrintWriter out = new PrintWriter(socket.getOutputStream(), true); // PrintWriter to send output to the server
-                 BufferedWriter out2 = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8)); BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)); // BufferedReader to read input from the standard input (console)
+                 BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)); // BufferedReader to read input from the standard input (console)
                 ) {
             System.out.println("Connected successfully! On session " + port);
             out.write("CONNECTED\n");
             out.flush();
 
- // Client reads the message until it finds EOT
             String response;
-            while ((response = in.readLine()) != null && !response.equals(EOT)) {
-                System.out.println("[Server] " + response);
-            }
+            while(!socket.isClosed()) {
+                // Client reads the message from the server until it finds EOT
+                while ((response = in.readLine()) != null && !response.equals(EOT)) {
+                    System.out.println("[Server] " + response);
+                }
 
-            // Client chooses an option
-            System.out.print("Enter your message: ");
-            String message = stdIn.readLine();
-            out.write(message + "\n");
-            out.flush();
+                // Client chooses an option
+                System.out.print("Enter your message: ");
+                String message = stdIn.readLine();
+                out.write(message + "\n");
+                out.flush();
 
-            // Read server response after sending the message
-            response = in.readLine();
-            System.out.println("[Server] " + response);
+                // Read server response after sending the message
+                while ((response = in.readLine()) != null && !response.equals(EOT)) {
+                    System.out.println("[Server] " + response);
+                }
 
-            // out.println(message);
-            // response = in.readLine();
-            // System.out.println("[Server] " + response);
-            // response = in.readLine();
-            // System.out.println(response);
-            // response = in.readLine();
-            // System.out.println(response);
-            // response = in.readLine();
-            // System.out.println(response);
-
-            /*
-            while (!socket.isClosed()) {
-                // User input
-                System.out.println("Choose something to send the server");
-                userIn = stdIn.readLine();
-                System.out.println(userIn);
-                out.write(userIn + "\n");
-                out.flush(); // Ensure the message is sent to the server
-
-                // Server response
-                serverOut = in.readLine();
-                System.out.println("[Server] " + serverOut);
-
-                if (serverOut.contains("Congratulations! You've guessed the number, Bye.")) {
+                if(message.equalsIgnoreCase("5")) {
                     socket.close();
                     break;
                 }
             }
-             */
         } catch (IOException e) {
             System.out.println("Unable to connect to host " + host + " on port " + port);
             e.printStackTrace();
