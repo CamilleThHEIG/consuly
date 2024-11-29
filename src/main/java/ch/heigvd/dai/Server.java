@@ -1,6 +1,6 @@
 package ch.heigvd.dai;
 
-import java.awt.desktop.SystemSleepEvent;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -12,15 +12,18 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import java.util.Date;
 import java.util.concurrent.Callable;
 
 import org.json.JSONArray;
 import picocli.CommandLine;
+import ch.heigvd.dai.util.JSON;
+
 
 @CommandLine.Command(name = "server", description = "Launch the server side of the application.")
 public class Server implements Callable<Integer> {
     private static final int NUMBER_OF_THREADS = 5;
+
+    private static int lastClientIdUsed = 2;
 
     @CommandLine.Option(
             names = {"-p", "--port"},
@@ -62,7 +65,6 @@ public class Server implements Callable<Integer> {
                 String userIn;
                 System.out.println("Client connected: " + socket.getInetAddress().getHostAddress());
                 while ((userIn = in.readLine()) != null) {
-                    // System.out.println("Received : " + userIn);
                     if (userIn.equals("READY_SEND")){
                         receiveList(in, out);
                     }
@@ -70,10 +72,17 @@ public class Server implements Callable<Integer> {
                 out.newLine();
                 out.flush(); // Ensure the message is sent to the client
 
-        } catch (IOException e) {
+            } catch (IOException e) {
                 System.out.println("Client handling exception: " + e.getMessage());
             }
         }
+
+        /**
+         * What to do to receive a list from a user
+         * @param in
+         * @param out
+         * @throws IOException
+         */
         public void receiveList(BufferedReader in, BufferedWriter out) throws IOException {
             System.out.println("In receiveList");
             out.write("READY_RECEIVE\n");
@@ -87,9 +96,8 @@ public class Server implements Callable<Integer> {
 
             boolean keepLoop = true;
             while (keepLoop) {
-                // System.out.println("Waiting from data client");
                 String userIn = in.readLine();
-                // System.out.println("Received : " + userIn);
+
                 if (listToAdd != null && userIn.contains("STYLE")){
                     String res = userIn.substring(5).replace("<", "").replace(">", "");
                     listToAdd.put(res);
@@ -98,25 +106,21 @@ public class Server implements Callable<Integer> {
                 }
                 switch (userIn) {
                     case "SENDING_LIKES":
-                        //System.out.println("Case : SENDING_LIKES");
                         out.write("ACK\n");
                         out.flush();
                         listToAdd = like;
                         break;
                     case "SENDING_DISLIKES":
-                        //System.out.println("Case : SENDING_DISLIKES");
                         out.write("ACK\n");
                         out.flush();
                         listToAdd = dislike;
                         break;
                     case "SENDING_NEUTRAL":
-                        //System.out.println("Case : SENDING_NEUTRAL");
                         out.write("ACK\n");
                         out.flush();
                         listToAdd = noopinion;
                         break;
                     case "FINISHED":
-                        // System.out.println("Case : FINISHED");
                         out.write("ACK\n");
                         out.flush();
                         keepLoop = false;
@@ -137,7 +141,10 @@ public class Server implements Callable<Integer> {
             for (int j = 0 ; j < noopinion.length() ; ++j){
                 System.out.println(dislike.getString(j));
             }
-            System.out.println("\nEnd of receiveList");
+
+            // write the result
+            JSON json = new JSON(lastClientIdUsed);
+            json.writeFileWithLists(like, dislike, noopinion);
         }
     }
 }

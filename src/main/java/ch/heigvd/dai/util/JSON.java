@@ -6,13 +6,12 @@ import org.json.JSONObject;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Scanner;
 
 public class JSON {
     private final String username;
-
+    private int id;
     private final String[] styles = {"Pop", "Rock", "Metal", "Classical"};
 
     public enum Taste {
@@ -21,15 +20,22 @@ public class JSON {
 
     private JSONObject json;
 
+    public JSON(int id){
+        this.id = id;
+        this.username = "default";
+        json = new JSONObject();
+    }
+
     public JSON() {
-        this("unknown");
+        this(0);
     }
 
     public JSON(String username) {
         this.username = username;
+        this.id = 0;
         json = new JSONObject();
         if (!new java.io.File("user" + username + ".json").exists()) {
-            create();
+            createByAsking();
         } else {
             try (FileReader fileIn = new FileReader("user" + username + ".json")) {
                 json = new JSONObject(new Scanner(fileIn).useDelimiter("\\A").next());
@@ -66,7 +72,11 @@ public class JSON {
         return likes;
     }
 
-    public void create() {
+    /**
+     * Crée un fichier de préférence en demandant les préférences via la ligne de commande
+     */
+    public void createByAsking() {
+        System.out.println("In createByAsking");
         JSONArray dislike_list = new JSONArray(), noopinion_list = new JSONArray(), like_list = new JSONArray();
         Scanner stdIn = new Scanner(System.in);
         System.out.println("Please indicate how much you like these styles (with 'like', 'dislike', 'noopinion').");
@@ -81,7 +91,7 @@ public class JSON {
 
                 userInput = stdIn.nextLine();
             }
-            switch (userInput){
+            switch (userInput) {
                 case "like" : like_list.put(style); break;
                 case "dislike": dislike_list.put(style); break;
                 case "noopinion": noopinion_list.put(style); break;
@@ -91,7 +101,8 @@ public class JSON {
         json.put(Taste.dislike.name(), dislike_list);
         json.put(Taste.noopinion.name(), noopinion_list);
 
-        try (FileWriter fileOut = new FileWriter("user.json")) {
+        Integer idCreation = id;
+        try (FileWriter fileOut = new FileWriter("userfiles/user" + idCreation + ".json")) {
             fileOut.write(json.toString(4)); // Indentation de 4 espaces pour rendre le fichier lisible
             fileOut.flush();
             System.out.println("Fichier JSON sauvegardé avec succès !");
@@ -119,6 +130,30 @@ public class JSON {
         System.out.println("Your liking has been changed.");
     }
 
+
+    /**
+     * Pour créer une liste de préférence personnelle à partir d'un fichier
+     * @param lList la liste des liked
+     * @param dList la liste des disliked
+     * @param nList la liste des neutral
+     */
+    public void writeFileWithLists(JSONArray lList, JSONArray dList, JSONArray nList){
+        json.put(Taste.like.name(), lList);
+        json.put(Taste.dislike.name(), dList);
+        json.put(Taste.noopinion.name(), nList);
+        try (FileWriter fileOut = new FileWriter("serverfiles/user" + id + ".json")) {
+            fileOut.write(json.toString(4) + "\n"); // Indentation de 4 espaces pour rendre le fichier lisible
+            fileOut.flush();
+            System.out.println("Flushed");
+            System.out.println("Fichier JSON pour id " + id + " sauvegardé avec succès !");
+        } catch (IOException e) {
+            System.err.println("Erreur lors de l'écriture du fichier JSON : " + e.getMessage());
+        }
+        System.out.println("End of writeFileWithLists.");
+    }
+    /**
+     return le Taste d'un style donné dans les tableaux spécifiés
+     */
     private Taste styleTaste(JSONArray dList, JSONArray lList, JSONArray nList, String style) {
         Taste taste = Taste.like;
         for (int i = 0; i < dList.length(); ++i) {
@@ -150,7 +185,7 @@ public class JSON {
 
     @Override
     public String toString() {
-        String list = null;
+        String list;
         LinkedList<String> arrTaste = getTaste(Taste.like);
         list = "Like : ";
         for (int i = 0; i < arrTaste.size(); ++i) {
@@ -171,6 +206,9 @@ public class JSON {
         return list;
     }
 
+    /**
+     * What does this do ?
+     */
     public void showTastes() {
         for(int i = 0; i < Taste.values().length; ++i)
             System.out.print((Taste.values()[i])+ " ");
