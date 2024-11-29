@@ -1,7 +1,8 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="RunMain" type="Application" factoryName="Application">
+  <configuration default="false" name="RunClient" type="Application" factoryName="Application">
     <option name="MAIN_CLASS_NAME" value="ch.heigvd.dai.Main" />
     <module name="Consuly" />
+    <option name="PROGRAM_PARAMETERS" value="client" />
     <method v="2">
       <option name="Make" enabled="true" />
     </method>

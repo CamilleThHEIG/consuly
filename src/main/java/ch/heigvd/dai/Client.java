@@ -5,8 +5,9 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 
 import java.util.concurrent.Callable;
-import java.util.Scanner;
 import java.io.IOException;
+
+import ch.heigvd.dai.util.JSON;
 import picocli.CommandLine;
 import org.json.*;
 
@@ -39,83 +40,31 @@ public class Client implements Callable<Integer> {
             edit();
             return 0;
         } else {
-            return connect();
+            return connectToServer();
         }
     }
 
-    private void edit() throws FileNotFoundException, UnsupportedEncodingException {
-        // Took first ten from https://www.musicianwave.com/top-music-genres/
-        String[] styles_list = {"Pop", "Rock", "Rap", "Jazz", "Blues", "Folk", "Metal", "Country", "Classical"};
 
-        JSONArray dislike_list = new JSONArray();
-        JSONArray noopinion_list = new JSONArray();
-        JSONArray like_list = new JSONArray();
-
-        Scanner myObj = new Scanner(System.in);  // Create a Scanner object
-
-        System.out.println("Please indicate how much you like these styles (with 'like', 'dislike', 'noopinion'.");
-        for (String style : styles_list){
-            System.out.println("How do you like : " + style);
-
-            String userInput = myObj.nextLine();  // Read user input
-            while (!userInput.equals("like")  && !userInput.equals("dislike") && !userInput.equals("noopinion")) {
-                System.out.println("Try again");
-                userInput = myObj.nextLine();
-            }
-            switch (userInput){
-                case "like": like_list.put(style); break;
-                case "dislike": dislike_list.put(style); break;
-                case "noopinion": noopinion_list.put(style); break;
-            }
-        }
-        JSONObject jo = new JSONObject();
-        jo.put("like", like_list);
-        jo.put("dislike", dislike_list);
-        jo.put("noopinion", noopinion_list);
-
-        try (FileWriter file = new FileWriter("user.json")) {
-            file.write(jo.toString(4)); // Indentation de 4 espaces pour rendre le fichier lisible
-            file.flush();
-            System.out.println("Fichier JSON sauvegardé avec succès !");
-        } catch (IOException e) {
-            System.err.println("Erreur lors de l'écriture du fichier JSON : " + e.getMessage());
-        }
+    private void edit(){
+        System.out.println("In edit2");
+        JSON json = new JSON();
+        json.createByAsking();
     }
 
-    private int connect(){
+    private int connectToServer(){
         System.out.println("Connecting to host " + host + " on port " + port);
         try (
                 Socket socket = new Socket(host, port);
                 BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)); // BufferedReader to read input from the server
 
-                PrintWriter out = new PrintWriter(socket.getOutputStream(), true); // PrintWriter to send output to the server
                 BufferedWriter out2 = new BufferedWriter( new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
-                        BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)); // BufferedReader to read input from the standard input (console)
+                BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)); // BufferedReader to read input from the standard input (console)
         ){
             System.out.println("Connected successfully!");
             String serverOut, userIn, welcomeMessage;
             // Server communication
             sendPreferences(out2, in);
 
-            /*
-            while (!socket.isClosed()) {
-                // User input
-                System.out.println("Choose something to send the server");
-                userIn = stdIn.readLine();
-                System.out.println(userIn);
-                out.write(userIn + "\n");
-                out.flush(); // Ensure the message is sent to the server
-
-                // Server response
-                serverOut = in.readLine();
-                System.out.println("[Server] " + serverOut);
-
-                if (serverOut.contains("Congratulations! You've guessed the number, Bye.")) {
-                    socket.close();
-                    break;
-                }
-            }
-             */
 
         } catch (IOException e) {
             System.out.println("Unable to connect to host " + host + " on port " + port);
@@ -124,7 +73,13 @@ public class Client implements Callable<Integer> {
         return 0;
     }
 
-
+    /**
+     * send a message that expects ACK from the server
+     * @param out
+     * @param in
+     * @param message
+     * @throws IOException
+     */
     private void sendAckExpectedMessage(BufferedWriter out, BufferedReader in, String message) throws IOException {
         String serverResponse;
         //System.out.println("Sending :" + message);
@@ -138,7 +93,13 @@ public class Client implements Callable<Integer> {
         }
     }
 
-
+    /**
+     * send the list to server
+     * @param out
+     * @param in
+     * @param list_to_send
+     * @throws IOException
+     */
     private void sendList(BufferedWriter out, BufferedReader in, JSONArray list_to_send) throws IOException {
         String serverResponse;
         for (int j = 0 ; j < list_to_send.length() ; ++j) {
@@ -154,9 +115,15 @@ public class Client implements Callable<Integer> {
         }
     }
 
+    /**
+     * send the local preference list to the server
+     * @param out out buffer to user
+     * @param in buffer to receive message from server
+     * @throws IOException
+     */
     private void sendPreferences(BufferedWriter out, BufferedReader in) throws IOException {
         // this section will later be replaced with cleaner interaction with json
-        try (FileReader reader = new FileReader("userfiles/user.json")) {
+        try (FileReader reader = new FileReader("userfiles/user0.json")) {
             System.out.println("Sending READY_SEND");
             out.write("READY_SEND\n");
             out.flush();
@@ -179,7 +146,6 @@ public class Client implements Callable<Integer> {
             JSONArray like = jsonObject.getJSONArray("like");
             JSONArray dislike = jsonObject.getJSONArray("dislike");
             JSONArray noopinion = jsonObject.getJSONArray("noopinion");
-            String message = "";
 
             sendAckExpectedMessage(out, in, "SENDING_LIKES");
             sendList(out, in, like);
@@ -188,7 +154,6 @@ public class Client implements Callable<Integer> {
             sendAckExpectedMessage(out, in, "SENDING_NEUTRAL");
             sendList(out, in, noopinion);
             sendAckExpectedMessage(out, in, "FINISHED");
-
 
         } catch (IOException e) {
             System.err.println("Erreur lors de la lecture du fichier JSON : " + e.getMessage());
