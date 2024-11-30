@@ -13,14 +13,11 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import java.util.concurrent.Callable;
-
 import org.json.JSONArray;
 
-import picocli.CommandLine;
-import ch.heigvd.dai.util.JSON;
 import ch.heigvd.dai.util.Group;
-
+import ch.heigvd.dai.util.JSON;
+import picocli.CommandLine;
 
 @CommandLine.Command(name = "server", description = "Launch the server side of the application.")
 public class Server implements Callable<Integer> {
@@ -31,7 +28,7 @@ public class Server implements Callable<Integer> {
     private static int lastClientIdUsed = 2;
 
     static {
-        ACTIVE_PORTS = new LinkedList();
+        ACTIVE_PORTS = new LinkedList<>();
         EOT = "\u0004\n";
     }
 
@@ -39,7 +36,6 @@ public class Server implements Callable<Integer> {
         NUMBER_OF_THREADS = 5;
         groups = new LinkedList<>();
     }
-
 
     @CommandLine.Option(
             names = {"-p", "--port"},
@@ -50,7 +46,9 @@ public class Server implements Callable<Integer> {
     @Override
     public Integer call() {
         try (
-                ServerSocket serverSocket = new ServerSocket(port); ExecutorService executor = Executors.newFixedThreadPool(NUMBER_OF_THREADS);) {
+                ServerSocket serverSocket = new ServerSocket(port);
+                ExecutorService executor = Executors.newFixedThreadPool(NUMBER_OF_THREADS)
+        ) {
             System.out.println("Server is listening on port " + port);
             while (!serverSocket.isClosed()) {
                 Socket socket = serverSocket.accept(); // Accept a client connection
@@ -88,9 +86,11 @@ public class Server implements Callable<Integer> {
                         userIn = in.readLine();
                         if (isSessionActive(Integer.parseInt(userIn))) {
                             out.write("SESSION_ACTIVE\n");
+                            out.write(EOT);
                             out.flush();
                         } else {
                             out.write("CONNECTION_REFUSED\n");
+                            out.write(EOT);
                             out.flush();
                             continue;
                         }
@@ -120,7 +120,7 @@ public class Server implements Callable<Integer> {
                                 showGroups(out);
                             }
                             case "5" -> {
-                                out.write("Bye.");
+                                out.write("Bye.\n");
                                 out.write(EOT);
                                 out.flush();
                             }
@@ -137,25 +137,28 @@ public class Server implements Callable<Integer> {
             }
         }
 
-
         private static void createGroup(BufferedWriter out, BufferedReader in) throws IOException {
-            out.write("Enter the name of the group: "); out.write(EOT); out.flush();
+            out.write("Enter the name of the group: ");
+            out.write(EOT);
+            out.flush();
             String name = in.readLine();
 
             groups.add(new Group(name, 1, new int[]{1}));
-            out.write("Group created.\n"); out.write(EOT); out.flush();
+            out.write("Group created.\n");
+            out.write(EOT);
+            out.flush();
         }
 
         private void showGroups(BufferedWriter out) throws IOException {
-            if(groups.isEmpty()) {
-                out.write("No group created yet.");
+            if (groups.isEmpty()) {
+                out.write("No group created yet.\n");
                 out.write(EOT);
                 out.flush();
                 return;
             }
 
             for (Group g : groups) {
-                out.write(g.toString());
+                out.write(g.toString() + "\n");
             }
             out.write(EOT);
             out.flush();
@@ -163,6 +166,7 @@ public class Server implements Callable<Integer> {
 
         private void joinGroup(BufferedWriter out, BufferedReader in) throws IOException {
             out.write("Enter the name of the group: ");
+            out.write(EOT);
             out.flush();
             String name = in.readLine();
             Group group = groups.stream().filter(g -> g.name().equals(name)).findFirst().orElse(null);
@@ -198,13 +202,6 @@ public class Server implements Callable<Integer> {
             return false;
         }
 
-        /**
-         * What to do to receive a list from a user
-         * @param in
-         * @param out
-         * @throws IOException
-         */
-
         public void receiveList(BufferedReader in, BufferedWriter out) throws IOException {
             System.out.println("In receiveList");
             out.write("READY_RECEIVE\n");
@@ -219,7 +216,7 @@ public class Server implements Callable<Integer> {
             boolean keepLoop = true;
             while (keepLoop) {
                 String userIn = in.readLine();
-                if (listToAdd != null && userIn.contains("STYLE")){
+                if (listToAdd != null && userIn.contains("STYLE")) {
                     String res = userIn.substring(5).replace("<", "").replace(">", "");
                     listToAdd.put(res);
                     out.write("ACK\n");
@@ -268,5 +265,4 @@ public class Server implements Callable<Integer> {
             json.writeFileWithLists(like, dislike, noopinion);
         }
     }
-
 }

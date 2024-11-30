@@ -4,29 +4,18 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-
 import java.util.concurrent.Callable;
-import java.io.IOException;
-
-import ch.heigvd.dai.util.JSON;
-import picocli.CommandLine;
-import org.json.*;
-
-import java.util.Scanner;
-import java.util.concurrent.Callable;
-
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import ch.heigvd.dai.util.JSON;
 import picocli.CommandLine;
 
 @CommandLine.Command(name = "client", description = "Launch the client side of the application.")
