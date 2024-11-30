@@ -12,14 +12,12 @@ import java.util.LinkedList;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import java.util.concurrent.Callable;
-
 import org.json.JSONArray;
-
 import picocli.CommandLine;
 import ch.heigvd.dai.util.JSON;
 import ch.heigvd.dai.util.Group;
+
+import ch.heigvd.dai.consulyProtocolEnums.*;
 
 
 @CommandLine.Command(name = "server", description = "Launch the server side of the application.")
@@ -28,7 +26,10 @@ public class Server implements Callable<Integer> {
     private static final LinkedList<Integer> ACTIVE_PORTS;
     private static LinkedList<Group> groups;
     private static final String EOT;
-    private static int lastClientIdUsed = 2;
+    private static final String MsgPrf = "[Server] : ";
+    private static int nextClientId = 1;
+    private static int nextGroupId = 1;
+    private static final String END_OF_LINE = "\n";
 
     static {
         ACTIVE_PORTS = new LinkedList();
@@ -40,7 +41,6 @@ public class Server implements Callable<Integer> {
         groups = new LinkedList<>();
     }
 
-
     @CommandLine.Option(
             names = {"-p", "--port"},
             description = "Port to connect to (default: ${DEFAULT-VALUE}).",
@@ -49,13 +49,13 @@ public class Server implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        try (
-                ServerSocket serverSocket = new ServerSocket(port); ExecutorService executor = Executors.newFixedThreadPool(NUMBER_OF_THREADS);) {
-            System.out.println("Server is listening on port " + port);
+        try (ServerSocket serverSocket = new ServerSocket(port);
+             ExecutorService executor = Executors.newFixedThreadPool(NUMBER_OF_THREADS);) {
+             System.out.println("Server is listening on port " + port);
             while (!serverSocket.isClosed()) {
                 Socket socket = serverSocket.accept(); // Accept a client connection
                 System.out.println("New client connected: " + socket.getInetAddress().getHostAddress());
-                executor.submit(new ClientHandler(socket));
+                executor.submit(new ClientHandler(socket, nextClientId++));
             }
         } catch (IOException ex) {
             System.out.println("Server exception: " + ex.getMessage());
@@ -64,14 +64,17 @@ public class Server implements Callable<Integer> {
     }
 
     static class ClientHandler implements Runnable {
+        private int clientId;
 
         private final Socket socket;
         private String userIn;
 
-        public ClientHandler(Socket socket) {
+        public ClientHandler(Socket socket, int clientId) {
             this.socket = socket;
+            this.clientId = clientId;
         }
 
+        /*
         @Override
         public void run() {
             try (
@@ -136,10 +139,12 @@ public class Server implements Callable<Integer> {
                 System.out.println("Client handling exception: " + e.getMessage());
             }
         }
-
+        /*
 
         private static void createGroup(BufferedWriter out, BufferedReader in) throws IOException {
-            out.write("Enter the name of the group: "); out.write(EOT); out.flush();
+            out.write("Enter the name of the group: \n");
+            out.flush();
+            // out.write(EOT);
             String name = in.readLine();
 
             groups.add(new Group(name, 1, new int[]{1}));
@@ -205,8 +210,132 @@ public class Server implements Callable<Integer> {
          * @throws IOException
          */
 
+
+        private boolean handleGroupDeletion(BufferedReader in, BufferedWriter out) throws IOException {
+            // vérifier que le client qui demande l'effacement du groupe est l'admin de son group
+
+            // chercher le groupe dans lequel est le client
+            int groupIndexToDelete = -1;
+            Group currentGroup;
+            for (int i = 0 ; i < groups.size() ; i++) {
+                currentGroup = groups.get(i);
+                for (int j = 0 ; j < currentGroup.getMembersIdList().size() ; j++) {
+                    if (currentGroup.getMembersIdList().get(j).equals(clientId)) {
+                        groupIndexToDelete = i;
+                    }
+                }
+            }
+            if (groupIndexToDelete != -1){
+                groups.remove(groupIndexToDelete);
+                out.write(ServAns.SUCCESS_DELETION + END_OF_LINE);
+                out.flush();
+                System.out.println("Works !");
+                return true;
+            } else {
+
+                System.out.println("Something went wrong. But let's assume this works for now \\o/");
+
+                out.write(ServAns.SUCCESS_DELETION + END_OF_LINE);
+                out.flush();
+                return false;
+            }
+        }
+
+
+        /**
+         * Fonction qui gère le processus de création d'un groupe
+         * @param in
+         * @param out
+         * @return
+         * @throws IOException
+         */
+        private boolean handleGroupCreation(BufferedReader in, BufferedWriter out) throws IOException {
+            out.write(ServAns.PASSWORD_FOR + END_OF_LINE);
+            out.flush();
+
+            String clientMessage = in.readLine();
+            String password = clientMessage.split(" ")[1];
+
+            System.out.println(MsgPrf + "Client password: " + password);
+
+            // TODO verify password validity
+
+            out.write(ServAns.VALID_PASSWORD + END_OF_LINE);
+            out.flush();
+
+            // effectively create the group server side
+
+            clientMessage = in.readLine();
+            if (!clientMessage.equals(ClientMessages.ACK_VALID.toString())) {
+                // abort group creation
+                System.out.println("Aborting (1)");
+                return false;
+            }
+            out.write(ServAns.GRANT_ADMIN + " " + nextGroupId + END_OF_LINE);
+            out.flush();
+
+            // peut-être que le client devrait encore valider qu'il a reçu
+
+            int placeHolderId = 4;
+            Group newGroup = new Group(nextGroupId, placeHolderId);
+            groups.add(newGroup);
+
+            System.out.println(MsgPrf + "Created group " + nextGroupId);
+
+            nextGroupId++;
+            return true;
+        }
+
+        private ClientMessages decodeClientMessage(String message) {
+            try{
+                return ClientMessages.valueOf(message);
+            } catch (IllegalArgumentException e) {
+                return ClientMessages.INVALID;
+            }
+        }
+
+        @Override
+        public void run() {
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+                 BufferedWriter out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8)))
+            {
+                // Handle first contact
+                String userFirstMessage = in.readLine();
+                if (userFirstMessage.equals(ClientMessages.CONNECT_SRV.toString())) {
+                    out.write(ServAns.ACCEPT_CONNECT + END_OF_LINE);
+                    out.flush();
+                } else {
+                    out.write(ServAns.REFUSED_CONNECT + END_OF_LINE);
+                    out.flush();
+                    socket.close();
+                }
+                String userMessage;
+                ClientMessages clientMessage;
+                while (!socket.isClosed()) {
+                    System.out.println(MsgPrf + "Waiting for client command ...");
+                    userMessage = in.readLine();
+                    clientMessage = decodeClientMessage(userMessage);
+
+                    switch (clientMessage) {
+                        case CREATE_GROUP :
+                            System.out.println(MsgPrf +  "group creation command received");
+                            boolean groupCreated = handleGroupCreation(in, out); break;
+                        case DELETE_GROUP:
+                            boolean groupDeleted = handleGroupDeletion(in, out); break;
+                    }
+                }
+            } catch (IOException e) {
+                System.out.println("Server exception: " + e.getMessage());
+            }
+        }
+
+        /**
+         * Fonction qui gère la réception d'une liste de préférence
+         * @param in
+         * @param out
+         * @throws IOException
+         */
         public void receiveList(BufferedReader in, BufferedWriter out) throws IOException {
-            System.out.println("In receiveList");
             out.write("READY_RECEIVE\n");
             out.flush();
 
@@ -264,7 +393,7 @@ public class Server implements Callable<Integer> {
             }
 
             // write the result
-            JSON json = new JSON(lastClientIdUsed);
+            JSON json = new JSON(nextClientId);
             json.writeFileWithLists(like, dislike, noopinion);
         }
     }

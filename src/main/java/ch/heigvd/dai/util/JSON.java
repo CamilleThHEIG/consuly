@@ -130,7 +130,6 @@ public class JSON {
         System.out.println("Your liking has been changed.");
     }
 
-
     /**
      * Pour créer une liste de préférence personnelle à partir d'un fichier
      * @param lList la liste des liked
