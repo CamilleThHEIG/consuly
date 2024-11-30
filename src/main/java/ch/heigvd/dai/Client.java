@@ -142,6 +142,11 @@ public class Client implements Callable<Integer> {
         }
     }
 
+
+    // handleReady(.....){
+    // rep = in.readline()
+    // en fonction de rep (qui peut être SEND_LIST, OU FORCEQUIT, ou REALEASE_READY) faire une action
+
     private boolean handleGroupDeletion(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
         System.out.println(MsgPrf + "want to delete group" + END_OF_LINE);
         out.write(ClientMessages.DELETE_GROUP + END_OF_LINE);
@@ -215,6 +220,8 @@ public class Client implements Callable<Integer> {
             input = decodeGroupMenuInput(userInput);
             switch (input){
                 case DELETE: handleGroupDeletion(in, out, stdIn); break;
+
+                // case READY : handleReady(.....)
 
                 case INVALID:
                     System.out.println("Invalid input. Try again");
