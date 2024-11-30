@@ -1,5 +1,9 @@
 # Consuly protocol
 
+**SECTION 3 NOT UP TO DATE**
+
+
+
 ## Section 1 - Overview
 
 Consuly protocol is a custom application protocol used by the application consuly. 
@@ -67,10 +71,6 @@ TRY_PASSWD <password> : client indicates the server that it thinks the password 
 QUIT : the client indicates the server it wants to quit the group its in. 
 
 ACK_QUIT : the server indicates the server that it understood that the client quitted its group
-
-
-
-
 
 ### Send preferences
 
