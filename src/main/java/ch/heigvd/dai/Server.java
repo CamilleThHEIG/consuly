@@ -127,6 +127,7 @@ public class Server implements Callable<Integer> {
                         break;
                 }
             }
+            /*
             System.out.println("Like");
             for (int j = 0 ; j < like.length() ; ++j){
                 System.out.println(like.getString(j));
@@ -145,6 +146,17 @@ public class Server implements Callable<Integer> {
             // write the result
             JSON json = new JSON(lastClientIdUsed);
             json.writeFileWithLists(like, dislike, noopinion);
+             */
+        }
+
+        /**
+         * When group admin calls this function, server will generate a group preference list, based on the members of the group
+         * @param in
+         * @param out
+         * @throws IOException
+         */
+        public void makeFinalList(BufferedReader in, BufferedWriter out) throws IOException {
+
         }
     }
 }
