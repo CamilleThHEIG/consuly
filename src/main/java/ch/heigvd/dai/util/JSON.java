@@ -3,6 +3,7 @@ package ch.heigvd.dai.util;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -212,5 +213,30 @@ public class JSON {
     public void showTastes() {
         for(int i = 0; i < Taste.values().length; ++i)
             System.out.print((Taste.values()[i])+ " ");
+    }
+
+
+    /**
+     * Loads a json file, and return the content as a JSONObject
+     * @param path path to read the file from
+     * @return
+     */
+    public JSONObject loadJsonFile(String path){
+        try (FileReader reader = new FileReader(path)) {
+            // Lire le contenu du fichier dans une chaîne
+            StringBuilder content = new StringBuilder();
+            int i;
+            while ((i = reader.read()) != -1) {
+                content.append((char) i);
+            }
+            // Convertir la chaîne en objet JSON
+            return new JSONObject(content.toString());
+
+        } catch (FileNotFoundException fnf){
+            System.out.println("Couldn't file suitable file at " + path);
+        } catch (IOException io){
+            System.out.println("IOException");
+        }
+        return null;
     }
 }

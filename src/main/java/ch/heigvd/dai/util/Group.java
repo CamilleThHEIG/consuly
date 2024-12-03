@@ -9,6 +9,8 @@ public class Group {
     private LinkedList<Integer> membersIdList;
     private final int groupId;
 
+    private boolean makeFinalList = false;
+
     public Group(String name, int id_owner, int[] id_members) {
         this.name = name;
         this.id_owner = id_owner;
@@ -37,6 +39,14 @@ public class Group {
 
     public String name() { return name; }
 
+
+    public boolean getMakeFinalList() {
+        return makeFinalList;
+    }
+
+    public void setMakeFinalList(boolean makeFinalList) {
+        this.makeFinalList = makeFinalList;
+    }
 
     public void deleteGroup() {
 
