@@ -8,6 +8,7 @@ import java.io.OutputStreamWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -19,21 +20,17 @@ import ch.heigvd.dai.util.Group;
 
 import ch.heigvd.dai.consulyProtocolEnums.*;
 
-
 @CommandLine.Command(name = "server", description = "Launch the server side of the application.")
 public class Server implements Callable<Integer> {
     private final int NUMBER_OF_THREADS;
-    private static final LinkedList<Integer> ACTIVE_PORTS;
-    private static LinkedList<Group> groups;
-    private static final String EOT;
+    private static final LinkedList<Integer> ACTIVE_PORTS; // Optional, for hosting multiple servers
     private static final String MsgPrf = "[Server] : ";
     private static int nextClientId = 1;
-    private static int nextGroupId = 1;
     private static final String END_OF_LINE = "\n";
+    private static LinkedList<Group> groups;
 
     static {
         ACTIVE_PORTS = new LinkedList();
-        EOT = "\u0004\n";
     }
 
     {
@@ -74,173 +71,71 @@ public class Server implements Callable<Integer> {
             this.clientId = clientId;
         }
 
-        /*
-        @Override
-        public void run() {
-            try (
-                    BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
-                    BufferedWriter out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8))) {
-                while ((userIn = in.readLine()) != null) {
-                    System.out.println("[Client] " + userIn);
-
-                    // Check if a session is active on the port
-                    if (userIn.equals("CHECK_SESSION")) {
-                        out.write("What is the port your try to join: \n");
-                        out.flush();
-
-                        userIn = in.readLine();
-                        if (isSessionActive(Integer.parseInt(userIn))) {
-                            out.write("SESSION_ACTIVE\n");
-                            out.flush();
-                        } else {
-                            out.write("CONNECTION_REFUSED\n");
-                            out.flush();
-                            continue;
-                        }
-                    }
-
-                    if (userIn.equals("CONNECTED")) {
-                        out.write("Choose an option ?\n");
-                        out.write("[1] CREATE a new group\n");
-                        out.write("[2] DELETE a group\n");
-                        out.write("[3] JOIN a group\n");
-                        out.write("[4] SHOW all groups\n");
-                        out.write("[5] QUIT\n");
-                        out.write(EOT);
-                        out.flush();
-                    } else { // Action of the client
-                        switch (userIn) {
-                            case "1" -> {
-                                createGroup(out, in);
-                            }
-                            case "2" -> {
-                                deleteGroup(out, in);
-                            }
-                            case "3" -> {
-                                joinGroup(out, in);
-                            }
-                            case "4" -> {
-                                showGroups(out);
-                            }
-                            case "5" -> {
-                                out.write("Bye.");
-                                out.write(EOT);
-                                out.flush();
-                            }
-                            default -> {
-                                out.write("Invalid option.\n");
-                                out.write(EOT);
-                                out.flush();
-                            }
-                        }
-                    }
-                }
-            } catch (IOException e) {
-                System.out.println("Client handling exception: " + e.getMessage());
-            }
-        }
-        /*
-
-        private static void createGroup(BufferedWriter out, BufferedReader in) throws IOException {
-            out.write("Enter the name of the group: \n");
-            out.flush();
-            // out.write(EOT);
-            String name = in.readLine();
-
-            groups.add(new Group(name, 1, new int[]{1}));
-            out.write("Group created.\n"); out.write(EOT); out.flush();
-        }
-
-        private void showGroups(BufferedWriter out) throws IOException {
-            if(groups.isEmpty()) {
-                out.write("No group created yet.");
-                out.write(EOT);
-                out.flush();
-                return;
-            }
-
-            for (Group g : groups) {
-                out.write(g.toString());
-            }
-            out.write(EOT);
-            out.flush();
-        }
-
-        private void joinGroup(BufferedWriter out, BufferedReader in) throws IOException {
-            out.write("Enter the name of the group: ");
-            out.flush();
-            String name = in.readLine();
-            Group group = groups.stream().filter(g -> g.name().equals(name)).findFirst().orElse(null);
-            if (group == null) {
-                out.write("Group not found.\n");
-                out.write(EOT);
-                out.flush();
-                return;
-            }
-            group.joinGroup();
-            out.write("Joined group.\n");
-            out.write(EOT);
-            out.flush();
-        }
-
-        private void deleteGroup(BufferedWriter out, BufferedReader in) throws IOException {
-            out.write("Enter the name of the group: ");
-            out.write(EOT);
-            out.flush();
-            String name = in.readLine();
-            groups.removeIf(group -> group.name().equals(name));
-            out.write("Group deleted.\n");
-            out.write(EOT);
-            out.flush();
-        }
-
-        private boolean isSessionActive(int port) {
-            for (int activePort : ACTIVE_PORTS) {
-                if (activePort == port) {
-                    return true;
+        private void removeGroup(String name) {
+            Iterator<Group> it = groups.iterator();
+            while (it.hasNext()) {
+                Group group = it.next();
+                if (group.name().equalsIgnoreCase(name)) {
+                    it.remove();
+                    System.out.println("Groupe supprimé : " + name);
+                    return;
                 }
             }
-            return false;
+            System.out.println("Groupe introuvable : " + name);
         }
 
         /**
-         * What to do to receive a list from a user
+         * Notifie un client spécifique qu'il doit quitter un groupe en envoyant un message personnalisé.
+         *
+         * @param clientId L'identifiant du client à notifier.
+         */
+        private void notifyClientToQuit(int clientId, BufferedWriter out) {
+//            out.write(ServAns.FORCE_QUIT + END_OF_LINE);
+//            out.flush();
+//            System.out.println(MsgPrf + "Sent FORCE_QUIT to client " + clientId);
+        }
+
+
+        /**
+         * Fonction qui gère le processus de suppression d'un groupe
          * @param in
          * @param out
+         * @return
          * @throws IOException
          */
+        private boolean handleGroupDeletion(BufferedReader in, BufferedWriter out, String groupName) throws IOException {
+            Group groupToDelete = null;
 
-
-        private boolean handleGroupDeletion(BufferedReader in, BufferedWriter out) throws IOException {
-            // vérifier que le client qui demande l'effacement du groupe est l'admin de son group
-
-            // chercher le groupe dans lequel est le client
-            int groupIndexToDelete = -1;
-            Group currentGroup;
-            for (int i = 0 ; i < groups.size() ; i++) {
-                currentGroup = groups.get(i);
-                for (int j = 0 ; j < currentGroup.getMembersIdList().size() ; j++) {
-                    if (currentGroup.getMembersIdList().get(j).equals(clientId)) {
-                        groupIndexToDelete = i;
-                    }
+            // Rechercher le groupe à supprimer
+            for (Group grp : groups) {
+                if (grp.name().equalsIgnoreCase(groupName)) {
+                    groupToDelete = grp;
+                    break;
                 }
             }
-            if (groupIndexToDelete != -1){
-                groups.remove(groupIndexToDelete);
+
+            if (groupToDelete != null) {
+                // Notifier les membres du groupe
+                for (Integer memberId : groupToDelete.membersIdList()) {
+                    notifyClientToQuit(memberId, out);
+                }
+
+                // Supprimer le groupe
+                removeGroup(groupName);
+
+                // Confirmer la suppression au client admin
                 out.write(ServAns.SUCCESS_DELETION + END_OF_LINE);
                 out.flush();
-                System.out.println("Works !");
+                System.out.println(MsgPrf + "Group '" + groupName + "' deleted successfully.");
                 return true;
             } else {
-
-                System.out.println("Something went wrong. But let's assume this works for now \\o/");
-
-                out.write(ServAns.SUCCESS_DELETION + END_OF_LINE);
+                // Groupe introuvable
+                out.write(ServAns.INVALID_GROUP + END_OF_LINE);
                 out.flush();
+                System.out.println(MsgPrf + "Group '" + groupName + "' not found.");
                 return false;
             }
         }
-
 
         /**
          * Fonction qui gère le processus de création d'un groupe
@@ -249,7 +144,7 @@ public class Server implements Callable<Integer> {
          * @return
          * @throws IOException
          */
-        private boolean handleGroupCreation(BufferedReader in, BufferedWriter out) throws IOException {
+        private boolean handleGroupCreation(BufferedReader in, BufferedWriter out, String groupname) throws IOException {
             out.write(ServAns.PASSWORD_FOR + END_OF_LINE);
             out.flush();
 
@@ -309,7 +204,8 @@ public class Server implements Callable<Integer> {
                     out.flush();
                     socket.close();
                 }
-                String userMessage;
+
+                String userMessage, groupname;
                 ClientMessages clientMessage;
                 while (!socket.isClosed()) {
                     System.out.println(MsgPrf + "Waiting for client command ...");
@@ -318,10 +214,12 @@ public class Server implements Callable<Integer> {
 
                     switch (clientMessage) {
                         case CREATE_GROUP :
+                            groupname = userMessage.substring(ClientMessages.CREATE_GROUP.toString().length());
                             System.out.println(MsgPrf +  "group creation command received");
-                            boolean groupCreated = handleGroupCreation(in, out); break;
+                            boolean groupCreated = handleGroupCreation(in, out, groupname); break;
                         case DELETE_GROUP:
-                            boolean groupDeleted = handleGroupDeletion(in, out); break;
+                            groupname = userMessage.substring(ClientMessages.DELETE_GROUP.toString().length());
+                            boolean groupDeleted = handleGroupDeletion(in, out, groupname); break;
                     }
                 }
             } catch (IOException e) {
@@ -397,5 +295,4 @@ public class Server implements Callable<Integer> {
             json.writeFileWithLists(like, dislike, noopinion);
         }
     }
-
 }

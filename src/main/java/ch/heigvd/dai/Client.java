@@ -28,9 +28,9 @@ public class Client implements Callable<Integer> {
     private boolean connectedToServer = false;
 
     private static final String END_OF_LINE = "\n";
-    private static final String EOT = "\u0004";
     private static final String MsgPrf = "[Client] : ";
     private static boolean inAGroup = false;
+    private static ServAns responseServ;
 
     @CommandLine.Option(
             names = {"-h", "--host"},
@@ -66,47 +66,47 @@ public class Client implements Callable<Integer> {
         json.createByAsking();
     }
 
-    private int connectToServer() {
-        System.out.println("Connecting to host " + host + " on port " + port);
-        try (
-                Socket socket = new Socket(host, port); BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)); // BufferedReader to read input from the server
-                PrintWriter out = new PrintWriter(socket.getOutputStream(), true); // PrintWriter to send output to the server
-                BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)); // BufferedReader to read input from the standard input (console)
-        ) {
-            System.out.println("Connected successfully! On session " + port);
-            out.write("CONNECTED\n");
-            out.flush();
-
-            String response;
-            while(!socket.isClosed()) {
-
-                // Client reads the message from the server until it finds EOT
-                while ((response = in.readLine()) != null && !response.equals(EOT)) {
-                    System.out.println("[Server] " + response);
-                }
-
-                // Client chooses an option
-                System.out.print("Enter your message: ");
-                String message = stdIn.readLine();
-                out.write(message + "\n");
-                out.flush();
-
-                // Read server response after sending the message
-                while ((response = in.readLine()) != null && !response.equals(EOT)) {
-                    System.out.println("[Server] " + response);
-                }
-
-                if(message.equalsIgnoreCase("5")) {
-                    socket.close();
-                    break;
-                }
-            }
-        } catch (IOException e) {
-            System.out.println("Unable to connect to host " + host + " on port " + port);
-            e.printStackTrace();
-        }
-        return 0;
-    }
+//    private int connectToServer() {
+//        System.out.println("Connecting to host " + host + " on port " + port);
+//        try (
+//                Socket socket = new Socket(host, port); BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)); // BufferedReader to read input from the server
+//                PrintWriter out = new PrintWriter(socket.getOutputStream(), true); // PrintWriter to send output to the server
+//                BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)); // BufferedReader to read input from the standard input (console)
+//        ) {
+//            System.out.println("Connected successfully! On session " + port);
+//            out.write("CONNECTED\n");
+//            out.flush();
+//
+//            String response;
+//            while(!socket.isClosed()) {
+//
+//                // Client reads the message from the server until it finds EOT
+//                while ((response = in.readLine()) != null && !response.equals(EOT)) {
+//                    System.out.println("[Server] " + response);
+//                }
+//
+//                // Client chooses an option
+//                System.out.print("Enter your message: ");
+//                String message = stdIn.readLine();
+//                out.write(message + "\n");
+//                out.flush();
+//
+//                // Read server response after sending the message
+//                while ((response = in.readLine()) != null && !response.equals(EOT)) {
+//                    System.out.println("[Server] " + response);
+//                }
+//
+//                if(message.equalsIgnoreCase("5")) {
+//                    socket.close();
+//                    break;
+//                }
+//            }
+//        } catch (IOException e) {
+//            System.out.println("Unable to connect to host " + host + " on port " + port);
+//            e.printStackTrace();
+//        }
+//        return 0;
+//    }
 
 
     private void showMenu(){
@@ -166,7 +166,10 @@ public class Client implements Callable<Integer> {
 
     private boolean handleGroupCreation(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
         System.out.println("Group creation");
-        out.write(ClientMessages.CREATE_GROUP + END_OF_LINE);
+        System.out.print("What's the name of your awesome group ?");
+        String groupname = stdIn.readLine();
+
+        out.write(ClientMessages.CREATE_GROUP + " " + groupname + END_OF_LINE);
         out.flush();
 
         String servResponse = in.readLine();
@@ -273,24 +276,33 @@ public class Client implements Callable<Integer> {
             BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)); // BufferedReader to read input from the standard input (console)
         ){
             System.out.println("Connected successfully! On session " + port);
-            out.write("CONNECT_SRV\n"); out.flush();
-            // decoder la réponse du serveur
+            out.write(ClientMessages.CONNECT_SRV + END_OF_LINE); out.flush(); // first contact with server
             String response;
             response = in.readLine();
-            if (response != null && !response.equals(EOT)) {
-                System.out.println("[Server] " + response);
-                if (response.equals(ServAns.REFUSED_CONNECT.toString())) {
-                    socket.close();
-                } else if (response.equals(ServAns.ACCEPT_CONNECT.toString())) {
-                    connectedToServer = true;
-                } else {
-                    System.out.println("Weird server answer. Closing.");
-                    socket.close();
-                }
+            System.out.println("[Server] " + response);
+
+            responseServ = decodeServerAnswer(response);
+            switch(responseServ) {
+                case ServAns.ACCEPT_CONNECT -> connectedToServer = true;
+                case ServAns.REFUSED_CONNECT, ServAns.WEIRD_ANSWER -> socket.close();
             }
+
+//            if (response != null && !response.equals(EOT)) {
+//                System.out.println("[Server] " + response);
+//                if (response.equals(ServAns.REFUSED_CONNECT.toString())) {
+//                    socket.close();
+//                } else if (response.equals(ServAns.ACCEPT_CONNECT.toString())) {
+//                    connectedToServer = true;
+//                } else {
+//                    System.out.println("Weird server answer. Closing.");
+//                    socket.close();
+//                }
+//            }
+
             // user input loop
             String userInput;
             BaseMenuCmd input;
+
             while (!socket.isClosed()) {
                 if (inAGroup){
                     groupMenu(socket, in, out, stdIn);

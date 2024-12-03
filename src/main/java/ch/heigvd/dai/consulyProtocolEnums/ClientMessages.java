@@ -5,8 +5,6 @@ public enum ClientMessages {
     CREATE_GROUP,
     PASSWORD,
     ACK_VALID,
-
     DELETE_GROUP,
-
     INVALID
 }

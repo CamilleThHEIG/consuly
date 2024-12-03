@@ -7,6 +7,8 @@ public enum ServAns {
     VALID_PASSWORD,
     INVALID_PASSWORD,
     GRANT_ADMIN,
+    FORCE_QUIT,
+    INVALID_GROUP,
 
     SUCCESS_DELETION,
 
