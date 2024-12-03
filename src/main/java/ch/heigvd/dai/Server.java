@@ -9,6 +9,7 @@ import java.io.OutputStreamWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -17,6 +18,7 @@ import java.util.concurrent.Callable;
 import org.json.JSONArray;
 import picocli.CommandLine;
 import ch.heigvd.dai.util.JSON;
+import ch.heigvd.dai.util.Group;
 
 
 @CommandLine.Command(name = "server", description = "Launch the server side of the application.")
@@ -30,6 +32,7 @@ public class Server implements Callable<Integer> {
             description = "Port to connect to (default: ${DEFAULT-VALUE}).",
             defaultValue = "4446")
     protected int port;
+
 
     @Override
     public Integer call() {
@@ -55,13 +58,16 @@ public class Server implements Callable<Integer> {
             this.socket = socket;
         }
 
+
         @Override
         public void run() {
             try (
                     BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
                     BufferedWriter out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8))
             ){
-
+                // TODO REMOVE THIS WHEN TESTING IS OVER
+                testMakeFinalList();
+                /*
                 String userIn;
                 System.out.println("Client connected: " + socket.getInetAddress().getHostAddress());
                 while ((userIn = in.readLine()) != null) {
@@ -71,6 +77,8 @@ public class Server implements Callable<Integer> {
                 }
                 out.newLine();
                 out.flush(); // Ensure the message is sent to the client
+
+                 */
 
             } catch (IOException e) {
                 System.out.println("Client handling exception: " + e.getMessage());
@@ -151,12 +159,30 @@ public class Server implements Callable<Integer> {
 
         /**
          * When group admin calls this function, server will generate a group preference list, based on the members of the group
+         * @param group : group to create the list from
          * @param in
          * @param out
          * @throws IOException
          */
-        public void makeFinalList(BufferedReader in, BufferedWriter out) throws IOException {
+        public void makeFinalList(Group group, BufferedReader in, BufferedWriter out) throws IOException {
+            LinkedList<Integer> membersList = group.getMembersIdList();
+            System.out.println("Here are the members");
+            for (Integer memberId : membersList) {
 
+                // ask their list
+                // receiveList(null, null);
+
+                System.out.println("Ping" + memberId);
+            }
+        }
+
+        public void testMakeFinalList() throws IOException {
+            Group testGroup = new Group(0, 17);
+            testGroup.addMember(8);
+            testGroup.addMember(9);
+            testGroup.addMember(10);
+
+            makeFinalList(testGroup, null, null);
         }
     }
 }
