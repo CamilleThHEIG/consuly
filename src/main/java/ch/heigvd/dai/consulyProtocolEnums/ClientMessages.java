@@ -4,6 +4,7 @@ public enum ClientMessages {
     CONNECT_SRV,
     CREATE_GROUP,
     READY,
+    QUIT,
     PASSWORD,
     ACK_VALID,
     DELETE_GROUP,

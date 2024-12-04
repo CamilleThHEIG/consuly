@@ -7,6 +7,7 @@ public enum ServAns {
     VALID_PASSWORD,
     INVALID_PASSWORD,
     GRANT_ADMIN,
+    ACK_QUIT,
     FORCE_QUIT,
     INVALID_GROUP,
 
@@ -19,5 +20,9 @@ public enum ServAns {
     NO_GROUP,
 
     WEIRD_ANSWER,
+
+    ERROR,      // signifies an error, no matter the type
+    ERROR_7,    // to signify user that it does not have admin rights
+    ERROR_13,   // used to signify user that it's not in a group
     NONE
 }
