@@ -77,18 +77,18 @@ public class Client implements Callable<Integer> {
             System.out.println("DELETE : delete the group");
         } else {
             System.out.println("\nREADY : signify the server that you are ready for final playlist (or be kicked)");
-            System.out.println("QUIT : quit the group");
         }
-        System.out.println("SHOW_MENU : show this menu again (éventuellement)");
+        System.out.println("QUIT : quit the group");
+        //System.out.println("SHOW_MENU : show this menu again (éventuellement)");
         System.out.print("->");
     }
 
     private void showMenu(){
         System.out.println("Choose an option ?");
         System.out.println("CREATE : create a new group");
-        System.out.println("DELETE : delete a group");
+        //System.out.println("DELETE : delete a group");
         System.out.println("JOIN : join a group");
-        System.out.println("SHOW : show all existing groups");
+        System.out.println("LIST : Display all existing groups");
         System.out.println("QUIT");
     }
 
@@ -173,7 +173,7 @@ public class Client implements Callable<Integer> {
                 case ServAns.VALID_PASSWORD:
                     System.out.println(MsgPrf + "Group created successfully.");
                     group = new Group(groupname, this.id, password);
-                    inAGroup = true;
+                    isAdmin = inAGroup = true;
                     return true;
                 case ServAns.INVALID_PASSWORD:
                     System.out.println(MsgPrf + "Invalid password");
@@ -234,18 +234,48 @@ public class Client implements Callable<Integer> {
             System.out.print(">");
             userInput = stdIn.readLine();
 
-            input = decodeGroupMenuInput(userInput);
-            switch (input){
-                case DELETE: handleGroupDeletion(in, out, stdIn); break;
-
-                // case READY : handleReady(.....)
-
+            switch (decodeGroupMenuInput(userInput)) {
+                case MAKE:
+                    System.out.println("Making the final playlist");
+                    handleMake(in, out, stdIn);
+                    break;
+                case DELETE:
+                    handleGroupDeletion(in, out, stdIn);
+                    break;
+                case READY:
+                    System.out.println("Signifying the server that you are ready for final playlist");
+                    handleReady(in, out, stdIn);
+                    break;
                 case INVALID:
                     System.out.println("Invalid input. Try again");
                     break;
             }
         }
+    }
 
+    private void handleMake(BufferedReader in, BufferedWriter out, BufferedReader stdIn) {
+
+    }
+
+    private void handleReady(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
+        String serverResponse;
+        out.write(ClientMessages.READY + END_OF_LINE);
+        out.flush();
+
+        while(true) {
+            serverResponse = in.readLine();
+            switch (decodeServerAnswer(serverResponse)) {
+                case ServAns.SUCCESS_DELETION:
+                    System.out.println(MsgPrf + "Group deleted successfully.");
+                    return;
+                case ServAns.WAITING_USER_TO_QUIT:
+                    System.out.println(MsgPrf + "Waiting for users to quit the group.");
+                    continue;
+                case ServAns.FORCE_QUIT:
+                    System.out.println(MsgPrf + "You have been kicked from the group.");
+                    return;
+            }
+        }
     }
 
     private void baseServerMenu(Socket socket, BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
@@ -263,17 +293,16 @@ public class Client implements Callable<Integer> {
                     System.out.print("What's the name of your awesome group ?");
                     String groupname = stdIn.readLine();
                     handleGroupCreation(in, out, stdIn, groupname); break;
-                case DELETE:
-                    handleGroupDeletion(in, out, stdIn);
-                    break;
-                case LIST:
-                    System.out.println("List the groups. Not available yet.\n\n");
-                    handleGroupList(in, out, stdIn);
-                    break;
+//                case DELETE:
+//                    handleGroupDeletion(in, out, stdIn);
+//                    break;
                 case JOIN:
                     handleGroupList(in, out, stdIn);
                     System.out.println("Which group do you want to join ?");
                     handleGroupJoin(in, out, stdIn);
+                    break;
+                case LIST:
+                    handleGroupList(in, out, stdIn);
                     break;
                 case QUIT:
                     System.out.println("Quit the server. Not available yet.\n\n");
