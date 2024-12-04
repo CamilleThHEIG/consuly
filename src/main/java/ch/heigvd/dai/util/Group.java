@@ -7,10 +7,10 @@ public class Group {
     private String name;
     private int id_owner;
     private int[] id_members;
-    private LinkedList<Integer> membersIdList;
-    private ArrayList<Boolean> listReceived;
+    private LinkedList<Integer> membersIdList;  // liste qui représente les membres du groupes
+    private ArrayList<Boolean> listReceived;    // liste qui représente qui a déjà envoyé sa liste
     private final int groupId;
-    private boolean makeFinalList = false;
+    private boolean makeFinalList = false;  // indique si l'admin a demandé de faire une liste finale
 
     public Group(String name, int id_owner, int[] id_members) {
         this.name = name;

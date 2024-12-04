@@ -53,6 +53,7 @@ public class Server implements Callable<Integer> {
         return 0;
     }
 
+
     static class ClientHandler implements Runnable {
         private final Socket socket;
         private static final int LOWERBOUND = 1, UPPERBOUND = 100;
@@ -86,6 +87,17 @@ public class Server implements Callable<Integer> {
             } catch (IOException e) {
                 System.out.println("Client handling exception: " + e.getMessage());
             }
+        }
+
+
+        public void handleReady(){
+            // called when user writes READY
+
+            // if GROUP du user qui a call. makeFinalList = True
+            // -> receiveList
+            // else sleep and après 10 sec send RELEASE READY
+            //
+
         }
 
         /**
@@ -238,9 +250,9 @@ public class Server implements Callable<Integer> {
             testGroup.addMember(10);
             testGroup.addMember(11);
 
-            testGroup.notifiyListReceived(10);
+            // testGroup.notifiyListReceived(10);
 
-            // makeFinalList(testGroup, null, null);
+            makeFinalList(testGroup, null, null);
         }
     }
 }
