@@ -168,7 +168,7 @@ public class Client implements Callable<Integer> {
                     break;
                 case ServAns.VALID_PASSWORD:
                     System.out.println(MsgPrf + "Group created successfully.");
-                    group = new Group(groupname, this.id, password);
+
                     isAdmin = inAGroup = true;
                     return true;
                 case ServAns.INVALID_PASSWORD:
