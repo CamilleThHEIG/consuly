@@ -17,8 +17,12 @@ import org.json.JSONArray;
 import picocli.CommandLine;
 import ch.heigvd.dai.util.JSON;
 import ch.heigvd.dai.util.Group;
-
 import ch.heigvd.dai.consulyProtocolEnums.*;
+import java.util.concurrent.Callable;
+import org.json.JSONArray;
+import picocli.CommandLine;
+import ch.heigvd.dai.util.JSON;
+
 
 @CommandLine.Command(name = "server", description = "Launch the server side of the application.")
 public class Server implements Callable<Integer> {
@@ -37,6 +41,8 @@ public class Server implements Callable<Integer> {
         NUMBER_OF_THREADS = 5;
         groups = new LinkedList<>();
     }
+
+    private static int lastClientIdUsed = 2;
 
     @CommandLine.Option(
             names = {"-p", "--port"},
@@ -221,7 +227,6 @@ public class Server implements Callable<Integer> {
                         socket.close();
                         break;
                 }
-
                 String userMessage, groupname;
                 System.out.println(MsgPrf + "Waiting for client command ...");
                 while (!socket.isClosed()) {
@@ -249,8 +254,10 @@ public class Server implements Callable<Integer> {
             }
         }
 
+
         /**
-         * Fonction qui gère la réception d'une liste de préférence
+         * What to do to receive a list from a user
+
          * @param in
          * @param out
          * @throws IOException
@@ -268,6 +275,7 @@ public class Server implements Callable<Integer> {
             boolean keepLoop = true;
             while (keepLoop) {
                 String userIn = in.readLine();
+
                 if (listToAdd != null && userIn.contains("STYLE")){
                     String res = userIn.substring(5).replace("<", "").replace(">", "");
                     listToAdd.put(res);
@@ -314,6 +322,7 @@ public class Server implements Callable<Integer> {
 
             // write the result
             JSON json = new JSON(nextClientId);
+
             json.writeFileWithLists(like, dislike, noopinion);
         }
     }

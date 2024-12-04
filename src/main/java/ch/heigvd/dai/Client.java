@@ -12,8 +12,8 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 
 import java.util.concurrent.Callable;
-
 import ch.heigvd.dai.util.Group;
+import java.io.IOException;
 import ch.heigvd.dai.util.JSON;
 import picocli.CommandLine;
 
