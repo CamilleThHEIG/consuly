@@ -27,7 +27,7 @@ import ch.heigvd.dai.util.Group;
 @CommandLine.Command(name = "server", description = "Launch the server side of the application.")
 public class Server implements Callable<Integer> {
     private static final int NUMBER_OF_THREADS = 5;
-
+    
     private static int lastClientIdUsed = 2;
 
     @CommandLine.Option(
@@ -172,18 +172,12 @@ public class Server implements Callable<Integer> {
             System.out.println("Here are the members");
             JSON jsonInteractor = new JSON();
 
-            LinkedList<JSONObject> allPreferences = new LinkedList<>();
-            LinkedList<JSONArray> allLikes = new LinkedList<>();
             LinkedList<JSONArray> allDislikes = new LinkedList<>();
-
             LinkedList<String> finalList = new LinkedList<>();
 
             // loop a first time to load every json content
             for (Integer memberId : membersList) {
                 // ask their list
-
-                // TODO don't know how yet, but we will need to find a way
-                // receiveList(null, null);
 
                 //TODO WHEN TESTING OVER, REMOVE THIS LINE WITH COMMENTED ONE
                 String filePath = "serverfiles/test" + memberId + ".json";
@@ -244,7 +238,9 @@ public class Server implements Callable<Integer> {
             testGroup.addMember(10);
             testGroup.addMember(11);
 
-            makeFinalList(testGroup, null, null);
+            testGroup.notifiyListReceived(10);
+
+            // makeFinalList(testGroup, null, null);
         }
     }
 }
