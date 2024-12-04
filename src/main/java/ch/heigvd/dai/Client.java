@@ -7,12 +7,10 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 
-import java.sql.SQLOutput;
 import java.util.concurrent.Callable;
 
 import ch.heigvd.dai.util.Group;
@@ -31,9 +29,11 @@ public class Client implements Callable<Integer> {
     private static final String MsgPrf = "[Client] : ";
     private static boolean connectedToServer, inAGroup = false;
     private boolean isAdmin = false;
-    private static ServAns responseServ;
-    private static int id;
-    private static Group group = null;
+    private ClientMessages clientMessage;
+    private ServAns servAnswer;
+    private String serverOut, clientIn;
+    private int id;
+    private Group group = null;
 
     @CommandLine.Option(
             names = {"-h", "--host"},
@@ -122,9 +122,6 @@ public class Client implements Callable<Integer> {
     // en fonction de rep (qui peut être SEND_LIST, OU FORCEQUIT, ou REALEASE_READY) faire une action
 
     private boolean handleGroupDeletion(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
-        String serverResponse;
-        ServAns responseServ;
-
         System.out.println("Group deletion");
 
         // DELETE_GROUP <groupname>
@@ -132,8 +129,8 @@ public class Client implements Callable<Integer> {
         out.flush();
 
         while(true) {
-            serverResponse = in.readLine();
-            switch (decodeServerAnswer(serverResponse)) {
+            serverOut = in.readLine();
+            switch (decodeServerAnswer(serverOut)) {
                 case ServAns.INVALID_GROUP:
                     System.out.println(MsgPrf + "The group does not exist.");
                     return false;
@@ -154,16 +151,15 @@ public class Client implements Callable<Integer> {
     }
 
     private boolean handleGroupCreation(BufferedReader in, BufferedWriter out, BufferedReader stdIn, String groupname) throws IOException {
-        String serverResponse, password = null;
-        ServAns responseServ;
+        String password = null;
 
         // CREATE_GROUP <groupname>
         out.write(ClientMessages.CREATE_GROUP + " " + groupname + END_OF_LINE);
         out.flush();
 
         while(true) {
-            serverResponse = in.readLine();
-            switch (decodeServerAnswer(serverResponse.split(" ")[0])) {
+            serverOut = in.readLine();
+            switch (decodeServerAnswer(serverOut.split(" ")[0])) {
                 case PASSWORD_FOR:
                     System.out.print("Enter a password for the group : ");
                     password = stdIn.readLine();
@@ -206,13 +202,12 @@ public class Client implements Callable<Integer> {
     }
 
     private void handleGroupList(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
-        String serverResponse;
         out.write(ClientMessages.LIST_GROUPS + END_OF_LINE);
         out.flush();
 
         while(true) {
-            serverResponse = in.readLine();
-            switch (decodeServerAnswer(serverResponse)) {
+            serverOut = in.readLine();
+            switch (decodeServerAnswer(serverOut)) {
                 case ServAns.END_OF_LIST:
                     System.out.println(MsgPrf + "End of list.");
                     return;
@@ -220,7 +215,7 @@ public class Client implements Callable<Integer> {
                     System.out.println(MsgPrf + "No group available.");
                     return;
                 default:
-                    System.out.println(serverResponse);
+                    System.out.println(serverOut);
             }
         }
     }
@@ -228,13 +223,12 @@ public class Client implements Callable<Integer> {
     private void groupMenu(Socket socket, BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
         // maybe ask the group info to the server
         showGroupMenu();
-        String userInput;
         GroupMenuCmd input = GroupMenuCmd.INVALID;
         while (input == GroupMenuCmd.INVALID) {
             System.out.print(">");
-            userInput = stdIn.readLine();
+            clientIn = stdIn.readLine();
 
-            switch (decodeGroupMenuInput(userInput)) {
+            switch (decodeGroupMenuInput(clientIn)) {
                 case MAKE:
                     System.out.println("Making the final playlist");
                     handleMake(in, out, stdIn);
@@ -258,13 +252,12 @@ public class Client implements Callable<Integer> {
     }
 
     private void handleReady(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
-        String serverResponse;
         out.write(ClientMessages.READY + END_OF_LINE);
         out.flush();
 
         while(true) {
-            serverResponse = in.readLine();
-            switch (decodeServerAnswer(serverResponse)) {
+            serverOut = in.readLine();
+            switch (decodeServerAnswer(serverOut)) {
                 case ServAns.SUCCESS_DELETION:
                     System.out.println(MsgPrf + "Group deleted successfully.");
                     return;
@@ -280,12 +273,11 @@ public class Client implements Callable<Integer> {
 
     private void baseServerMenu(Socket socket, BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
         showMenu();
-        String userInput;
         BaseMenuCmd input = BaseMenuCmd.INVALID;
         while (input == BaseMenuCmd.INVALID) {
             System.out.print(">");
-            userInput = stdIn.readLine();
-            input = decodeBaseMenuInput(userInput);
+            clientIn = stdIn.readLine();
+            input = decodeBaseMenuInput(clientIn);
 
             switch (input) {
                 case CREATE:
@@ -326,13 +318,12 @@ public class Client implements Callable<Integer> {
             out.write(ClientMessages.CONNECT_SRV + END_OF_LINE); // first contact with server
             out.flush();
 
-            String response;
-            response = in.readLine();
-            String command = response.split(" ")[0]; // Extract the command part of the response
+            serverOut = in.readLine();
+            String command = serverOut.split(" ")[0]; // Extract the command part of the response
 
             switch(decodeServerAnswer(command)) {
                 case ACCEPT_CONNECT:
-                    this.id = Integer.parseInt(response.split(" ")[1]);; // get the id given by the server
+                    this.id = Integer.parseInt(serverOut.split(" ")[1]);; // get the id given by the server
                     connectedToServer = true;
                     System.out.println("Connected to server with id " + this.id);
                     break;
@@ -342,9 +333,6 @@ public class Client implements Callable<Integer> {
             }
 
             // user input loop
-            String userInput;
-            BaseMenuCmd input;
-
             while (!socket.isClosed()) {
                 if (inAGroup){
                     groupMenu(socket, in, out, stdIn);
@@ -369,12 +357,11 @@ public class Client implements Callable<Integer> {
      * @throws IOException
      */
     private void sendAckExpectedMessage(BufferedWriter out, BufferedReader in, String message) throws IOException {
-        String serverResponse;
         out.write(message + "\n");
         out.flush();
-        serverResponse = in.readLine();
-        if (!serverResponse.equals("ACK")) {
-            System.out.println("WEIRD RESPONSE " + serverResponse + " TO " + message);
+        serverOut = in.readLine();
+        if (!serverOut.equals("ACK")) {
+            System.out.println("WEIRD RESPONSE " + serverOut + " TO " + message);
         } else {
             //System.out.println("Received : " + serverResponse);
         }
@@ -388,17 +375,15 @@ public class Client implements Callable<Integer> {
      * @throws IOException
      */
     private void sendList(BufferedWriter out, BufferedReader in, JSONArray list_to_send) throws IOException {
-        String serverResponse;
-        String message;
         for (int j = 0; j < list_to_send.length(); ++j) {
-            message = "STYLE<" + list_to_send.getString(j) + ">";
-            System.out.println("Sending : " + message);
-            out.write(message + "\n");
+            clientIn = "STYLE<" + list_to_send.getString(j) + ">";
+            System.out.println("Sending : " + clientIn);
+            out.write(clientIn + "\n");
             out.flush();
 
-            serverResponse = in.readLine();
-            if (!serverResponse.equals("ACK")) {
-                System.out.println("WEIRD RESPONSE " + serverResponse + " TO " + message);
+            serverOut = in.readLine();
+            if (!serverOut.equals("ACK")) {
+                System.out.println("WEIRD RESPONSE " + serverOut + " TO " + clientIn);
             }
         }
     }
@@ -415,11 +400,11 @@ public class Client implements Callable<Integer> {
             System.out.println("Sending READY_SEND");
             out.write("READY_SEND\n");
             out.flush();
-            String serverResponse = in.readLine();
-            if (!serverResponse.equals("READY_RECEIVE")) {
-                System.out.println("WEIRD RESPONSE " + serverResponse + " TO READY_SEND");
+            serverOut = in.readLine();
+            if (!serverOut.equals("READY_RECEIVE")) {
+                System.out.println("WEIRD RESPONSE " + serverOut + " TO READY_SEND");
             } else {
-                System.out.println("Received : " + serverResponse);
+                System.out.println("Received : " + serverOut);
             }
 
             // Lire le contenu du fichier dans une chaîne
