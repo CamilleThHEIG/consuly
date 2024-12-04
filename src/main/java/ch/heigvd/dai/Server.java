@@ -12,9 +12,8 @@ import java.util.ArrayList;
 
 import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
+
 import org.json.JSONArray;
 import picocli.CommandLine;
 import ch.heigvd.dai.util.JSON;
@@ -58,6 +57,9 @@ public class Server implements Callable<Integer> {
     protected int port;
 
 
+
+
+
     @Override
     public Integer call() {
         try (ServerSocket serverSocket = new ServerSocket(port);
@@ -78,11 +80,25 @@ public class Server implements Callable<Integer> {
     static class ClientHandler implements Runnable {
         private int clientId;
         private final Socket socket;
+        //private Group myClientGroup = null;
 
         public ClientHandler(Socket socket, int clientId) {
             this.socket = socket;
             this.clientId = clientId;
         }
+
+        private boolean removeGroupWithAdminId(int adminId){
+            Iterator<Group> it = groups.iterator();
+            while (it.hasNext()) {
+                Group group = it.next();
+                if (group.isOwner(adminId)) {
+                    it.remove();
+                    return true;
+                }
+            }
+            return false;
+        }
+
 
         private boolean removeGroup(String name) {
             Iterator<Group> it = groups.iterator();
@@ -94,6 +110,16 @@ public class Server implements Callable<Integer> {
                 }
             }
             return false;
+        }
+
+        public Group getGroupWithAdminId(int adminId) {
+            for (Group group : groups) {
+                if (group.isOwner(adminId)) {
+                    return group;
+                }
+            }
+            System.out.println("Did not find group with adminId " + adminId);
+            return null;
         }
 
         /**
@@ -117,19 +143,11 @@ public class Server implements Callable<Integer> {
          * @return
          * @throws IOException
          */
-        private boolean handleGroupDeletion(BufferedReader in, BufferedWriter out, String groupName, int clientId) throws IOException {
-            String clientMessage;
-            Group groupToDelete = getGroupByName(groupName);
+        private boolean handleGroupDeletion(BufferedReader in, BufferedWriter out, int clientId) throws IOException {
+            Group myClientGroup = getGroupWithAdminId(clientId);
 
-            if (groupToDelete == null) {
-                out.write(ServAns.INVALID_GROUP + END_OF_LINE);
-                out.flush();
-                return false;
-            }
-
-            // Check if the client is the owner of the group
-            if (!groupToDelete.isOwner(clientId)) {
-                out.write(ServAns.INVALID_ID + END_OF_LINE);
+            if (myClientGroup == null) {
+                out.write(ServAns.ERROR + END_OF_LINE);
                 out.flush();
                 return false;
             }
@@ -138,12 +156,22 @@ public class Server implements Callable<Integer> {
 //            for (Integer memberId : groupToDelete.membersIdList()) {
 //                notifyClientToQuit(memberId, out);
 //            }
-            out.write(ServAns.WAITING_USER_TO_QUIT + END_OF_LINE);
-            out.flush();
-            groupToDelete.getMembersIdList().clear(); // Par simplicité on vide la liste des membres du groupe
+
+            // sendForceQuit to everyone
+
+            while(!getGroupWithAdminId(clientId).everyoneButAdminLeft()) {
+                try {
+                    TimeUnit.SECONDS.sleep(1);
+                } catch (InterruptedException e) {
+                    System.out.println("CATCHED");
+                }
+            }
+            // now we are alon in the group
+
+            //groupToDelete.getMembersIdList().clear(); // Par simplicité on vide la liste des membres du groupe
 
             // effectively create the group server side
-            if(!removeGroup(groupName)) {
+            if(!removeGroupWithAdminId(clientId)) {
                 out.write(ServAns.FAILURE_DELETION + END_OF_LINE);
                 out.flush();
                 return false;
@@ -192,6 +220,7 @@ public class Server implements Callable<Integer> {
             groups.add(newGroup);
             out.write(ServAns.VALID_PASSWORD + " " + newGroup.name() + END_OF_LINE);
             out.flush();
+
             return true;
         }
 
@@ -210,6 +239,28 @@ public class Server implements Callable<Integer> {
             out.flush();
         }
 
+
+        /**
+         * Handles client wanting to quit it's group
+         * @param out
+         * @throws IOException
+         */
+        private void handleQuitGroup(BufferedWriter out) throws IOException {
+            for (Group group : groups) {
+                if (group.hasMember(clientId)) {
+                    group.removeMember(clientId);
+                    out.write(ServAns.ACK_QUIT + END_OF_LINE);
+                    out.flush();
+                    return;
+                }
+            }
+            // TODO should we signify client that it's not in a group ?;
+            System.out.println("ERROR : client was not in a group D:");
+
+            out.write(ServAns.ERROR_13 + END_OF_LINE);
+            out.flush();
+        }
+
         private ClientMessages decodeClientMessage(String message) {
             try{
                 return ClientMessages.valueOf(message);
@@ -217,7 +268,6 @@ public class Server implements Callable<Integer> {
                 return ClientMessages.INVALID;
             }
         }
-
 
         @Override
         public void run() {
@@ -247,15 +297,16 @@ public class Server implements Callable<Integer> {
                             System.out.println(MsgPrf + "Creating group with name " + groupname);
                             boolean groupCreated = handleGroupCreation(in, out, groupname); break;
                         case DELETE_GROUP:
-                            groupname = userMessage.split(" ")[1];
-                            System.out.println(MsgPrf + "Deleting group with name " + groupname);
-                            int clientId = Integer.parseInt(userMessage.split(" ")[2]);
-                            boolean groupDeleted = handleGroupDeletion(in, out, groupname, clientId); break;
+                            System.out.println(MsgPrf + "Deleting group ... ");
+                            boolean groupDeleted = handleGroupDeletion(in, out, clientId); break;
                         case LIST_GROUPS:
                             handleGroupListing(out);
                             break;
                         case INVALID:
                             System.out.println(MsgPrf + "Invalid command received: " + userMessage);
+                            break;
+                        case QUIT:
+                            handleQuitGroup(out);
                             break;
                     }
                 }
