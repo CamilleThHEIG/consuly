@@ -7,7 +7,7 @@ import picocli.CommandLine;
         version = "1.0.0",
         subcommands = {
                 Client.class,
-                Server.class,
+                Server.class
         },
         scope = CommandLine.ScopeType.INHERIT,
         mixinStandardHelpOptions = true)
