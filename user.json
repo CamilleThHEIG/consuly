@@ -1,0 +1,17 @@
+{
+    "like": [
+        "Pop",
+        "Metal",
+        "Classical"
+    ],
+    "dislike": [
+        "Rap",
+        "Country"
+    ],
+    "noopinion": [
+        "Rock",
+        "Jazz",
+        "Blues",
+        "Folk"
+    ]
+}
