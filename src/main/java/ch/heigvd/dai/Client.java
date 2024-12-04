@@ -33,7 +33,8 @@ public class Client implements Callable<Integer> {
     private ServAns servAnswer;
     private String serverOut, clientIn;
     private int id;
-    private Group group = null;
+    private String joinedGroupName = null;
+
 
     @CommandLine.Option(
             names = {"-h", "--host"},
@@ -70,15 +71,19 @@ public class Client implements Callable<Integer> {
 
 
     private void showGroupMenu(){
-        System.out.print("Currently in group " + group.name() + ". Choose an option: ");
+        if (joinedGroupName == null) {
+            System.out.println("WEIRD. No group joined");
+            return;
+        }
+        System.out.print("Currently in group " + joinedGroupName + ". Choose an option: ");
         if (isAdmin){
             System.out.println("(you are admin)");
             System.out.println("MAKE : make the final playlist for the group");
             System.out.println("DELETE : delete the group");
         } else {
             System.out.println("\nREADY : signify the server that you are ready for final playlist (or be kicked)");
+            System.out.println("QUIT : quit the group");
         }
-        System.out.println("QUIT : quit the group");
         //System.out.println("SHOW_MENU : show this menu again (éventuellement)");
         System.out.print("->");
     }
@@ -124,8 +129,13 @@ public class Client implements Callable<Integer> {
     private boolean handleGroupDeletion(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
         System.out.println("Group deletion");
 
+        if (joinedGroupName == null) {
+            System.out.println("WEIRD. No group joined");
+            return false;
+        }
+
         // DELETE_GROUP <groupname>
-        out.write(ClientMessages.DELETE_GROUP + " " + this.id + " " + this.group.name() + END_OF_LINE); // Send the client id for verification and the group name
+        out.write(ClientMessages.DELETE_GROUP + " " + this.id + " " + joinedGroupName + END_OF_LINE); // Send the client id for verification and the group name
         out.flush();
 
         while(true) {
@@ -151,7 +161,7 @@ public class Client implements Callable<Integer> {
     }
 
     private boolean handleGroupCreation(BufferedReader in, BufferedWriter out, BufferedReader stdIn, String groupname) throws IOException {
-        String password = null;
+        String password;
 
         // CREATE_GROUP <groupname>
         out.write(ClientMessages.CREATE_GROUP + " " + groupname + END_OF_LINE);
@@ -168,8 +178,8 @@ public class Client implements Callable<Integer> {
                     break;
                 case ServAns.VALID_PASSWORD:
                     System.out.println(MsgPrf + "Group created successfully.");
-
                     isAdmin = inAGroup = true;
+                    joinedGroupName = groupname;
                     return true;
                 case ServAns.INVALID_PASSWORD:
                     System.out.println(MsgPrf + "Invalid password");
@@ -281,10 +291,10 @@ public class Client implements Callable<Integer> {
 
             switch (input) {
                 case CREATE:
-                    System.out.println("Group creation");
-                    System.out.print("What's the name of your awesome group ?");
-                    String groupname = stdIn.readLine();
-                    handleGroupCreation(in, out, stdIn, groupname); break;
+                    System.out.print("What's the name of your awesome group ? ");
+                    String groupName = stdIn.readLine();
+                    handleGroupCreation(in, out, stdIn, groupName);
+                    break;
 //                case DELETE:
 //                    handleGroupDeletion(in, out, stdIn);
 //                    break;
