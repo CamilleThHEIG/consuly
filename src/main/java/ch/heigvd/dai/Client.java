@@ -65,50 +65,7 @@ public class Client implements Callable<Integer> {
         JSON json = new JSON();
         json.createByAsking();
     }
-
-//    private int connectToServer() {
-//        System.out.println("Connecting to host " + host + " on port " + port);
-//        try (
-//                Socket socket = new Socket(host, port); BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)); // BufferedReader to read input from the server
-//                PrintWriter out = new PrintWriter(socket.getOutputStream(), true); // PrintWriter to send output to the server
-//                BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)); // BufferedReader to read input from the standard input (console)
-//        ) {
-//            System.out.println("Connected successfully! On session " + port);
-//            out.write("CONNECTED\n");
-//            out.flush();
-//
-//            String response;
-//            while(!socket.isClosed()) {
-//
-//                // Client reads the message from the server until it finds EOT
-//                while ((response = in.readLine()) != null && !response.equals(EOT)) {
-//                    System.out.println("[Server] " + response);
-//                }
-//
-//                // Client chooses an option
-//                System.out.print("Enter your message: ");
-//                String message = stdIn.readLine();
-//                out.write(message + "\n");
-//                out.flush();
-//
-//                // Read server response after sending the message
-//                while ((response = in.readLine()) != null && !response.equals(EOT)) {
-//                    System.out.println("[Server] " + response);
-//                }
-//
-//                if(message.equalsIgnoreCase("5")) {
-//                    socket.close();
-//                    break;
-//                }
-//            }
-//        } catch (IOException e) {
-//            System.out.println("Unable to connect to host " + host + " on port " + port);
-//            e.printStackTrace();
-//        }
-//        return 0;
-//    }
-
-
+    
     private void showMenu(){
         System.out.println("Choose an option ?");
         System.out.println("CREATE : create a new group");
