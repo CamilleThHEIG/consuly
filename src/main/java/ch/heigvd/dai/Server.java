@@ -35,6 +35,8 @@ public class Server implements Callable<Integer> {
     private static final LinkedList<Integer> ACTIVE_PORTS; // Optional, for hosting multiple servers if needed
     private static final String MsgPrf = "[Server] : ";
     private static int nextClientId = 1;
+    private static int nextGroupId = 1;
+
     private static final String END_OF_LINE = "\n";
     private static LinkedList<Group> groups;
 
@@ -138,7 +140,7 @@ public class Server implements Callable<Integer> {
 //            }
             out.write(ServAns.WAITING_USER_TO_QUIT + END_OF_LINE);
             out.flush();
-            groupToDelete.membersIdList().clear(); // Par simplicité on vide la liste des membres du groupe
+            groupToDelete.getMembersIdList().clear(); // Par simplicité on vide la liste des membres du groupe
 
             // effectively create the group server side
             if(!removeGroup(groupName)) {
@@ -186,7 +188,7 @@ public class Server implements Callable<Integer> {
             }
 
             // effectively create the group server side
-            Group newGroup = new Group(groupname, clientId, password);
+            Group newGroup = new Group(clientId, groupname, password);
             groups.add(newGroup);
             out.write(ServAns.VALID_PASSWORD + " " + newGroup.name() + END_OF_LINE);
             out.flush();
@@ -408,14 +410,5 @@ public class Server implements Callable<Integer> {
             }
         }
 
-        public void testMakeFinalList() throws IOException {
-            Group testGroup = new Group(0, 9);
-            testGroup.addMember(10);
-            testGroup.addMember(11);
-
-            // testGroup.notifiyListReceived(10);
-
-            makeFinalList(testGroup, null, null);
-        }
     }
 }
