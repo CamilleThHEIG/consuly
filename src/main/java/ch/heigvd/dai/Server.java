@@ -23,7 +23,7 @@ import ch.heigvd.dai.consulyProtocolEnums.*;
 @CommandLine.Command(name = "server", description = "Launch the server side of the application.")
 public class Server implements Callable<Integer> {
     private final int NUMBER_OF_THREADS;
-    private static final LinkedList<Integer> ACTIVE_PORTS; // Optional, for hosting multiple servers
+    private static final LinkedList<Integer> ACTIVE_PORTS; // Optional, for hosting multiple servers if needed
     private static final String MsgPrf = "[Server] : ";
     private static int nextClientId = 1;
     private static final String END_OF_LINE = "\n";
@@ -62,26 +62,23 @@ public class Server implements Callable<Integer> {
 
     static class ClientHandler implements Runnable {
         private int clientId;
-
         private final Socket socket;
-        private String userIn;
 
         public ClientHandler(Socket socket, int clientId) {
             this.socket = socket;
             this.clientId = clientId;
         }
 
-        private void removeGroup(String name) {
+        private boolean removeGroup(String name) {
             Iterator<Group> it = groups.iterator();
             while (it.hasNext()) {
                 Group group = it.next();
                 if (group.name().equalsIgnoreCase(name)) {
                     it.remove();
-                    System.out.println("Groupe supprimé : " + name);
-                    return;
+                    return true;
                 }
             }
-            System.out.println("Groupe introuvable : " + name);
+            return false;
         }
 
         /**
@@ -89,11 +86,14 @@ public class Server implements Callable<Integer> {
          *
          * @param clientId L'identifiant du client à notifier.
          */
-        private void notifyClientToQuit(int clientId, BufferedWriter out) {
-//            out.write(ServAns.FORCE_QUIT + END_OF_LINE);
-//            out.flush();
-//            System.out.println(MsgPrf + "Sent FORCE_QUIT to client " + clientId);
-        }
+//        private void notifyClientToQuit(int clientId, BufferedWriter out) {
+//            try {
+//                out.write(ServAns.WAITING_USER_TO_QUIT + END_OF_LINE);
+//                out.flush();
+//            } catch (IOException e) {
+//                System.out.println("Error while notifying client to quit: " + e.getMessage());
+//            }
+//        }
 
 
         /**
@@ -103,38 +103,50 @@ public class Server implements Callable<Integer> {
          * @return
          * @throws IOException
          */
-        private boolean handleGroupDeletion(BufferedReader in, BufferedWriter out, String groupName) throws IOException {
-            Group groupToDelete = null;
+        private boolean handleGroupDeletion(BufferedReader in, BufferedWriter out, String groupName, int clientId) throws IOException {
+            String clientMessage;
+            Group groupToDelete = getGroupByName(groupName);
 
-            // Rechercher le groupe à supprimer
-            for (Group grp : groups) {
-                if (grp.name().equalsIgnoreCase(groupName)) {
-                    groupToDelete = grp;
-                    break;
-                }
-            }
-
-            if (groupToDelete != null) {
-                // Notifier les membres du groupe
-                for (Integer memberId : groupToDelete.membersIdList()) {
-                    notifyClientToQuit(memberId, out);
-                }
-
-                // Supprimer le groupe
-                removeGroup(groupName);
-
-                // Confirmer la suppression au client admin
-                out.write(ServAns.SUCCESS_DELETION + END_OF_LINE);
-                out.flush();
-                System.out.println(MsgPrf + "Group '" + groupName + "' deleted successfully.");
-                return true;
-            } else {
-                // Groupe introuvable
+            if (groupToDelete == null) {
                 out.write(ServAns.INVALID_GROUP + END_OF_LINE);
                 out.flush();
-                System.out.println(MsgPrf + "Group '" + groupName + "' not found.");
                 return false;
             }
+
+            // Check if the client is the owner of the group
+            if (!groupToDelete.isOwner(clientId)) {
+                out.write(ServAns.INVALID_ID + END_OF_LINE);
+                out.flush();
+                return false;
+            }
+
+            // Notify all members of the group to quit
+//            for (Integer memberId : groupToDelete.membersIdList()) {
+//                notifyClientToQuit(memberId, out);
+//            }
+            out.write(ServAns.WAITING_USER_TO_QUIT + END_OF_LINE);
+            out.flush();
+            groupToDelete.membersIdList().clear(); // Par simplicité on vide la liste des membres du groupe
+
+            // effectively create the group server side
+            if(!removeGroup(groupName)) {
+                out.write(ServAns.FAILURE_DELETION + END_OF_LINE);
+                out.flush();
+                return false;
+            }
+
+            out.write(ServAns.SUCCESS_DELETION + END_OF_LINE);
+            out.flush();
+            return true;
+        }
+
+        private Group getGroupByName(String groupName) {
+            for (Group group : groups) {
+                if (group.name().equalsIgnoreCase(groupName)) {
+                    return group;
+                }
+            }
+            return null;
         }
 
         /**
@@ -145,39 +157,28 @@ public class Server implements Callable<Integer> {
          * @throws IOException
          */
         private boolean handleGroupCreation(BufferedReader in, BufferedWriter out, String groupname) throws IOException {
+            String clientMessage, password = null;
+
+            // Ask the client for the password of the group
             out.write(ServAns.PASSWORD_FOR + END_OF_LINE);
             out.flush();
 
-            String clientMessage = in.readLine();
-            String password = clientMessage.split(" ")[1];
-
-            System.out.println(MsgPrf + "Client password: " + password);
-
-            // TODO verify password validity
-
-            out.write(ServAns.VALID_PASSWORD + END_OF_LINE);
-            out.flush();
-
-            // effectively create the group server side
-
+            // Receive the password
             clientMessage = in.readLine();
-            if (!clientMessage.equals(ClientMessages.ACK_VALID.toString())) {
-                // abort group creation
-                System.out.println("Aborting (1)");
+            password = clientMessage.split(" ")[1];
+            System.out.println(MsgPrf + "Received password: " + password);
+
+            if (password == null || password.isEmpty()) {
+                out.write(ServAns.INVALID_PASSWORD + END_OF_LINE);
+                out.flush();
                 return false;
             }
-            out.write(ServAns.GRANT_ADMIN + " " + nextGroupId + END_OF_LINE);
-            out.flush();
 
-            // peut-être que le client devrait encore valider qu'il a reçu
-
-            int placeHolderId = 4;
-            Group newGroup = new Group(nextGroupId, placeHolderId);
+            // effectively create the group server side
+            Group newGroup = new Group(groupname, clientId, password);
             groups.add(newGroup);
-
-            System.out.println(MsgPrf + "Created group " + nextGroupId);
-
-            nextGroupId++;
+            out.write(ServAns.VALID_PASSWORD + newGroup.name() + END_OF_LINE);
+            out.flush();
             return true;
         }
 
@@ -196,30 +197,35 @@ public class Server implements Callable<Integer> {
             {
                 // Handle first contact
                 String userFirstMessage = in.readLine();
-                if (userFirstMessage.equals(ClientMessages.CONNECT_SRV.toString())) {
-                    out.write(ServAns.ACCEPT_CONNECT + END_OF_LINE);
-                    out.flush();
-                } else {
-                    out.write(ServAns.REFUSED_CONNECT + END_OF_LINE);
-                    out.flush();
-                    socket.close();
+                switch (decodeClientMessage(userFirstMessage)) {
+                    case CONNECT_SRV:
+                        out.write(ServAns.ACCEPT_CONNECT + " " + clientId + END_OF_LINE); // Send the client ID
+                        out.flush();
+                        break;
+                    default:
+                        out.write(ServAns.REFUSED_CONNECT + END_OF_LINE);
+                        out.flush();
+                        socket.close();
+                        break;
                 }
 
                 String userMessage, groupname;
-                ClientMessages clientMessage;
+                System.out.println(MsgPrf + "Waiting for client command ...");
                 while (!socket.isClosed()) {
-                    System.out.println(MsgPrf + "Waiting for client command ...");
                     userMessage = in.readLine();
-                    clientMessage = decodeClientMessage(userMessage);
-
-                    switch (clientMessage) {
+                    switch (decodeClientMessage(userMessage.split(" ")[0])) {
                         case CREATE_GROUP :
-                            groupname = userMessage.substring(ClientMessages.CREATE_GROUP.toString().length());
-                            System.out.println(MsgPrf +  "group creation command received");
+                            groupname = userMessage.split(" ")[1];
+                            System.out.println(MsgPrf + "Creating group with name " + groupname);
                             boolean groupCreated = handleGroupCreation(in, out, groupname); break;
                         case DELETE_GROUP:
-                            groupname = userMessage.substring(ClientMessages.DELETE_GROUP.toString().length());
-                            boolean groupDeleted = handleGroupDeletion(in, out, groupname); break;
+                            groupname = userMessage.split(" ")[1];
+                            System.out.println(MsgPrf + "Deleting group with name " + groupname);
+                            int clientId = Integer.parseInt(userMessage.split(" ")[2]);
+                            boolean groupDeleted = handleGroupDeletion(in, out, groupname, clientId); break;
+                        case INVALID:
+                            System.out.println(MsgPrf + "Invalid command received: " + userMessage);
+                            break;
                     }
                 }
             } catch (IOException e) {

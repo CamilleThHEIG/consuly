@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 
 import java.util.concurrent.Callable;
 
+import ch.heigvd.dai.util.Group;
 import ch.heigvd.dai.util.JSON;
 import picocli.CommandLine;
 
@@ -25,12 +26,12 @@ import ch.heigvd.dai.consulyProtocolEnums.*;
 
 @CommandLine.Command(name = "client", description = "Launch the client side of the application.")
 public class Client implements Callable<Integer> {
-    private boolean connectedToServer = false;
-
     private static final String END_OF_LINE = "\n";
     private static final String MsgPrf = "[Client] : ";
-    private static boolean inAGroup = false;
+    private static boolean connectedToServer, inAGroup = false;
     private static ServAns responseServ;
+    private static int id;
+    private static Group group = null;
 
     @CommandLine.Option(
             names = {"-h", "--host"},
@@ -61,53 +62,9 @@ public class Client implements Callable<Integer> {
     }
 
     private void edit(){
-        System.out.println("In edit2");
         JSON json = new JSON();
         json.createByAsking();
     }
-
-//    private int connectToServer() {
-//        System.out.println("Connecting to host " + host + " on port " + port);
-//        try (
-//                Socket socket = new Socket(host, port); BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)); // BufferedReader to read input from the server
-//                PrintWriter out = new PrintWriter(socket.getOutputStream(), true); // PrintWriter to send output to the server
-//                BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)); // BufferedReader to read input from the standard input (console)
-//        ) {
-//            System.out.println("Connected successfully! On session " + port);
-//            out.write("CONNECTED\n");
-//            out.flush();
-//
-//            String response;
-//            while(!socket.isClosed()) {
-//
-//                // Client reads the message from the server until it finds EOT
-//                while ((response = in.readLine()) != null && !response.equals(EOT)) {
-//                    System.out.println("[Server] " + response);
-//                }
-//
-//                // Client chooses an option
-//                System.out.print("Enter your message: ");
-//                String message = stdIn.readLine();
-//                out.write(message + "\n");
-//                out.flush();
-//
-//                // Read server response after sending the message
-//                while ((response = in.readLine()) != null && !response.equals(EOT)) {
-//                    System.out.println("[Server] " + response);
-//                }
-//
-//                if(message.equalsIgnoreCase("5")) {
-//                    socket.close();
-//                    break;
-//                }
-//            }
-//        } catch (IOException e) {
-//            System.out.println("Unable to connect to host " + host + " on port " + port);
-//            e.printStackTrace();
-//        }
-//        return 0;
-//    }
-
 
     private void showMenu(){
         System.out.println("Choose an option ?");
@@ -148,72 +105,70 @@ public class Client implements Callable<Integer> {
     // en fonction de rep (qui peut être SEND_LIST, OU FORCEQUIT, ou REALEASE_READY) faire une action
 
     private boolean handleGroupDeletion(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
-        System.out.println(MsgPrf + "want to delete group" + END_OF_LINE);
-        out.write(ClientMessages.DELETE_GROUP + END_OF_LINE);
+        String serverResponse;
+        ServAns responseServ;
+
+        System.out.println("Group deletion");
+
+        // DELETE_GROUP <groupname>
+        out.write(ClientMessages.DELETE_GROUP + " " + this.id + " " + this.group.name() + END_OF_LINE); // Send the client id for verification and the group name
         out.flush();
 
-        String response;
-        response = in.readLine();
-        if (!response.equals(ServAns.SUCCESS_DELETION.toString())) {
-            System.out.println("[Server] " + response);
-            return false;
+        while(true) {
+            serverResponse = in.readLine();
+            switch (decodeServerAnswer(serverResponse)) {
+                case ServAns.INVALID_GROUP:
+                    System.out.println(MsgPrf + "The group does not exist.");
+                    return false;
+                case ServAns.INVALID_ID:
+                    System.out.println(MsgPrf + "You are not the owner of the group.");
+                    return false;
+                case ServAns.FAILURE_DELETION:
+                    System.out.println(MsgPrf + "Failed to delete the group.");
+                    return false;
+                case ServAns.WAITING_USER_TO_QUIT:
+                    System.out.println(MsgPrf + "Waiting for users to quit the group.");
+                    continue;
+                case ServAns.SUCCESS_DELETION:
+                    System.out.println(MsgPrf + "Group deleted successfully.");
+                    return true;
+            }
         }
-
-        inAGroup = false;
-        System.out.println(MsgPrf + "Group deleted");
-        return true;
     }
 
-    private boolean handleGroupCreation(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
+    private boolean handleGroupCreation(BufferedReader in, BufferedWriter out, BufferedReader stdIn, String groupname) throws IOException {
         System.out.println("Group creation");
-        System.out.print("What's the name of your awesome group ?");
-        String groupname = stdIn.readLine();
+        String serverResponse, password = null;
+        ServAns responseServ;
 
+        // CREATE_GROUP <groupname>
         out.write(ClientMessages.CREATE_GROUP + " " + groupname + END_OF_LINE);
         out.flush();
 
-        String servResponse = in.readLine();
-        if (! servResponse.equals(ServAns.PASSWORD_FOR.toString())){
-            return false;
+        while(true) {
+            serverResponse = in.readLine();
+            switch (decodeServerAnswer(serverResponse)) {
+                case PASSWORD_FOR:
+                    System.out.print("Enter a password for the group : ");
+                    password = stdIn.readLine();
+                    out.write(ClientMessages.PASSWORD + " " + password + END_OF_LINE);
+                    out.flush();
+                    break;
+                case ServAns.VALID_PASSWORD:
+                    System.out.println(MsgPrf + "Group created successfully.");
+                    group = new Group(groupname, this.id, password);
+                    inAGroup = true;
+                    return true;
+                case ServAns.INVALID_PASSWORD:
+                    System.out.println(MsgPrf + "Invalid password");
+                    return false;
+            }
         }
-
-        System.out.println("Choisir un mot de passe : ");
-        String chosenPassword = stdIn.readLine();
-
-        out.write(ClientMessages.PASSWORD + " " + chosenPassword + END_OF_LINE);
-        out.flush();
-
-        // On s'attend à VALIDPASSWD
-
-        servResponse = in.readLine();
-        if (! servResponse.equals(ServAns.VALID_PASSWORD.toString())){
-            // return false pour le moment, mais peut-être qu'on voudrait redonner un essai au user ?
-            System.out.println("Aborting (1)");
-            return false;
-        }
-        System.out.println(MsgPrf + "received : " + servResponse);
-        // inform the server
-
-        out.write(ClientMessages.ACK_VALID + END_OF_LINE);
-        out.flush();
-
-        servResponse = in.readLine();
-
-        if (! servResponse.contains(ServAns.GRANT_ADMIN.toString())){
-            // return false pour le moment, mais peut-être qu'on voudrait redonner un essai au user ?
-            System.out.println("Aborting (2)");
-            return false;
-        }
-        String groupIdStr = servResponse.split(" ")[1];
-
-        System.out.println(MsgPrf + "Joined group " + groupIdStr + " !");
-        this.inAGroup = true;
-        return true;
     }
 
     private void groupMenu(Socket socket, BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
         // maybe ask the group info to the server
-        System.out.println("In group : <someGroupId");
+        System.out.println("In group : " + group.name());
         String userInput;
         GroupMenuCmd input = GroupMenuCmd.INVALID;
         while (input == GroupMenuCmd.INVALID) {
@@ -241,14 +196,15 @@ public class Client implements Callable<Integer> {
         while (input == BaseMenuCmd.INVALID) {
             System.out.print(">");
             userInput = stdIn.readLine();
-
             input = decodeBaseMenuInput(userInput);
 
             switch (input) {
                 case CREATE:
-                    handleGroupCreation(in, out, stdIn); break;
+                    System.out.print("What's the name of your awesome group ?");
+                    String groupname = stdIn.readLine();
+                    handleGroupCreation(in, out, stdIn, groupname); break;
                 case DELETE:
-                    System.out.println("Are you sure it's ok to delete a group from outside the group ?");
+                    handleGroupDeletion(in, out, stdIn);
                     break;
                 case LIST:
                     System.out.println("List the groups");
@@ -275,29 +231,23 @@ public class Client implements Callable<Integer> {
             BufferedWriter out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
             BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)); // BufferedReader to read input from the standard input (console)
         ){
-            System.out.println("Connected successfully! On session " + port);
-            out.write(ClientMessages.CONNECT_SRV + END_OF_LINE); out.flush(); // first contact with server
+            out.write(ClientMessages.CONNECT_SRV + END_OF_LINE); // first contact with server
+            out.flush();
+
             String response;
             response = in.readLine();
-            System.out.println("[Server] " + response);
+            String command = response.split(" ")[0]; // Extract the command part of the response
 
-            responseServ = decodeServerAnswer(response);
-            switch(responseServ) {
-                case ServAns.ACCEPT_CONNECT -> connectedToServer = true;
-                case ServAns.REFUSED_CONNECT, ServAns.WEIRD_ANSWER -> socket.close();
+            switch(decodeServerAnswer(command)) {
+                case ACCEPT_CONNECT:
+                    this.id = Integer.parseInt(response.split(" ")[1]);; // get the id given by the server
+                    connectedToServer = true;
+                    System.out.println("Connected to server with id " + this.id);
+                    break;
+                case REFUSED_CONNECT, WEIRD_ANSWER:
+                    socket.close();
+                    return 1;
             }
-
-//            if (response != null && !response.equals(EOT)) {
-//                System.out.println("[Server] " + response);
-//                if (response.equals(ServAns.REFUSED_CONNECT.toString())) {
-//                    socket.close();
-//                } else if (response.equals(ServAns.ACCEPT_CONNECT.toString())) {
-//                    connectedToServer = true;
-//                } else {
-//                    System.out.println("Weird server answer. Closing.");
-//                    socket.close();
-//                }
-//            }
 
             // user input loop
             String userInput;
@@ -309,7 +259,6 @@ public class Client implements Callable<Integer> {
                 } else {
                     baseServerMenu(socket, in, out, stdIn);
                 }
-
             }
 
             System.out.println("End of transmission with server");

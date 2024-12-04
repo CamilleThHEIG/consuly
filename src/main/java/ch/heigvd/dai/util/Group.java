@@ -6,17 +6,16 @@ public class Group {
     private String name;
     private int idOwner;
     private LinkedList<Integer> membersIdList;
+    private String password;
 
-    public Group(String name, int id_owner) {
+    public Group(String name, int id_owner, String pwd){
         this.name = name;
         this.idOwner = id_owner;
+        this.membersIdList = new LinkedList<>();
+        this.password = pwd;
     }
 
-    public Group(int groupId, int adminId){
-        this.idOwner = adminId;
-        this.membersIdList = new LinkedList<>();
-        membersIdList.add(adminId);
-    }
+    private String password() { return password; }
 
     public int idOwner() { return idOwner; }
 
