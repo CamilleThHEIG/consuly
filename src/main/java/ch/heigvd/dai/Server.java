@@ -95,7 +95,6 @@ public class Server implements Callable<Integer> {
 //            }
 //        }
 
-
         /**
          * Fonction qui gère le processus de suppression d'un groupe
          * @param in

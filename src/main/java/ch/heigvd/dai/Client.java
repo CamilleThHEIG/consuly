@@ -12,6 +12,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 
+import java.sql.SQLOutput;
 import java.util.concurrent.Callable;
 
 import ch.heigvd.dai.util.Group;
@@ -29,6 +30,7 @@ public class Client implements Callable<Integer> {
     private static final String END_OF_LINE = "\n";
     private static final String MsgPrf = "[Client] : ";
     private static boolean connectedToServer, inAGroup = false;
+    private boolean isAdmin = false;
     private static ServAns responseServ;
     private static int id;
     private static Group group = null;
@@ -64,6 +66,21 @@ public class Client implements Callable<Integer> {
     private void edit(){
         JSON json = new JSON();
         json.createByAsking();
+    }
+
+
+    private void showGroupMenu(){
+        System.out.print("Currently in group " + group.name() + ". Choose an option: ");
+        if (isAdmin){
+            System.out.println("(you are admin)");
+            System.out.println("MAKE : make the final playlist for the group");
+            System.out.println("DELETE : delete the group");
+        } else {
+            System.out.println("\nREADY : signify the server that you are ready for final playlist (or be kicked)");
+            System.out.println("QUIT : quit the group");
+        }
+        System.out.println("SHOW_MENU : show this menu again (éventuellement)");
+        System.out.print("->");
     }
 
     private void showMenu(){
@@ -168,7 +185,7 @@ public class Client implements Callable<Integer> {
 
     private void groupMenu(Socket socket, BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
         // maybe ask the group info to the server
-        System.out.println("In group : " + group.name());
+        showGroupMenu();
         String userInput;
         GroupMenuCmd input = GroupMenuCmd.INVALID;
         while (input == GroupMenuCmd.INVALID) {
@@ -207,17 +224,17 @@ public class Client implements Callable<Integer> {
                     handleGroupDeletion(in, out, stdIn);
                     break;
                 case LIST:
-                    System.out.println("List the groups");
+                    System.out.println("List the groups. Not available yet.\n\n");
                     break;
                 case JOIN:
-                    System.out.println("Join the group");
+                    System.out.println("Join the group. Not available yet.\n\n");
                     break;
                 case QUIT:
-                    System.out.println("Quit the server");
+                    System.out.println("Quit the server. Not available yet.\n\n");
                     socket.close();
                     break;
                 case INVALID:
-                    System.out.println("Invalid input. Try again");
+                    System.out.println("Invalid input. Try again\n\n");
                     break;
             }
         }
