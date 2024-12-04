@@ -154,7 +154,6 @@ public class Client implements Callable<Integer> {
     }
 
     private boolean handleGroupCreation(BufferedReader in, BufferedWriter out, BufferedReader stdIn, String groupname) throws IOException {
-        System.out.println("Group creation");
         String serverResponse, password = null;
         ServAns responseServ;
 
@@ -164,7 +163,7 @@ public class Client implements Callable<Integer> {
 
         while(true) {
             serverResponse = in.readLine();
-            switch (decodeServerAnswer(serverResponse)) {
+            switch (decodeServerAnswer(serverResponse.split(" ")[0])) {
                 case PASSWORD_FOR:
                     System.out.print("Enter a password for the group : ");
                     password = stdIn.readLine();
@@ -179,6 +178,49 @@ public class Client implements Callable<Integer> {
                 case ServAns.INVALID_PASSWORD:
                     System.out.println(MsgPrf + "Invalid password");
                     return false;
+            }
+        }
+    }
+
+    private void handleGroupJoin(BufferedReader in, BufferedWriter out, BufferedReader stdIn) {
+//         out.write(ClientMessages.JOIN + " " + groupname + END_OF_LINE);
+//         out.flush();
+//         String serverResponse = in.readLine();
+//         switch (decodeServerAnswer(serverResponse)) {
+//             case ServAns.INVALID_GROUP:
+//                 System.out.println(MsgPrf + "The group does not exist.");
+//                 return false;
+//             case ServAns.INVALID_ID:
+//                 System.out.println(MsgPrf + "You are not the owner of the group.");
+//                 return false;
+//             case ServAns.FAILURE_DELETION:
+//                 System.out.println(MsgPrf + "Failed to delete the group.");
+//                 return false;
+//             case ServAns.WAITING_USER_TO_QUIT:
+//                 System.out.println(MsgPrf + "Waiting for users to quit the group.");
+//                 continue;
+//             case ServAns.SUCCESS_DELETION:
+//                 System.out.println(MsgPrf + "Group deleted successfully.");
+//                 return true;
+//         }
+    }
+
+    private void handleGroupList(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
+        String serverResponse;
+        out.write(ClientMessages.LIST_GROUPS + END_OF_LINE);
+        out.flush();
+
+        while(true) {
+            serverResponse = in.readLine();
+            switch (decodeServerAnswer(serverResponse)) {
+                case ServAns.END_OF_LIST:
+                    System.out.println(MsgPrf + "End of list.");
+                    return;
+                case ServAns.NO_GROUP:
+                    System.out.println(MsgPrf + "No group available.");
+                    return;
+                default:
+                    System.out.println(serverResponse);
             }
         }
     }
@@ -217,6 +259,7 @@ public class Client implements Callable<Integer> {
 
             switch (input) {
                 case CREATE:
+                    System.out.println("Group creation");
                     System.out.print("What's the name of your awesome group ?");
                     String groupname = stdIn.readLine();
                     handleGroupCreation(in, out, stdIn, groupname); break;
@@ -225,9 +268,12 @@ public class Client implements Callable<Integer> {
                     break;
                 case LIST:
                     System.out.println("List the groups. Not available yet.\n\n");
+                    handleGroupList(in, out, stdIn);
                     break;
                 case JOIN:
-                    System.out.println("Join the group. Not available yet.\n\n");
+                    handleGroupList(in, out, stdIn);
+                    System.out.println("Which group do you want to join ?");
+                    handleGroupJoin(in, out, stdIn);
                     break;
                 case QUIT:
                     System.out.println("Quit the server. Not available yet.\n\n");

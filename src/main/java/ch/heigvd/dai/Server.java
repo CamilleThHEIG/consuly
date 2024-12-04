@@ -165,7 +165,6 @@ public class Server implements Callable<Integer> {
             // Receive the password
             clientMessage = in.readLine();
             password = clientMessage.split(" ")[1];
-            System.out.println(MsgPrf + "Received password: " + password);
 
             if (password == null || password.isEmpty()) {
                 out.write(ServAns.INVALID_PASSWORD + END_OF_LINE);
@@ -176,9 +175,24 @@ public class Server implements Callable<Integer> {
             // effectively create the group server side
             Group newGroup = new Group(groupname, clientId, password);
             groups.add(newGroup);
-            out.write(ServAns.VALID_PASSWORD + newGroup.name() + END_OF_LINE);
+            out.write(ServAns.VALID_PASSWORD + " " + newGroup.name() + END_OF_LINE);
             out.flush();
             return true;
+        }
+
+        private void handleGroupListing(BufferedWriter out) throws IOException {
+            if(groups.isEmpty()) {
+                out.write(ServAns.NO_GROUP + END_OF_LINE);
+                out.flush();
+                return;
+            }
+
+            for (Group group : groups) {
+                out.write(group.name() + END_OF_LINE);
+                out.flush();
+            }
+            out.write(ServAns.END_OF_LIST + END_OF_LINE);
+            out.flush();
         }
 
         private ClientMessages decodeClientMessage(String message) {
@@ -222,6 +236,9 @@ public class Server implements Callable<Integer> {
                             System.out.println(MsgPrf + "Deleting group with name " + groupname);
                             int clientId = Integer.parseInt(userMessage.split(" ")[2]);
                             boolean groupDeleted = handleGroupDeletion(in, out, groupname, clientId); break;
+                        case LIST_GROUPS:
+                            handleGroupListing(out);
+                            break;
                         case INVALID:
                             System.out.println(MsgPrf + "Invalid command received: " + userMessage);
                             break;

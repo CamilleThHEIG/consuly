@@ -15,6 +15,9 @@ public enum ServAns {
     SUCCESS_DELETION,
     FAILURE_DELETION,
 
+    END_OF_LIST,
+    NO_GROUP,
+
     WEIRD_ANSWER,
     NONE
 }
