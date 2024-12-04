@@ -9,27 +9,24 @@ public class Group {
     private int[] id_members;
     private LinkedList<Integer> membersIdList;  // liste qui représente les membres du groupes
     private ArrayList<Boolean> listReceived;    // liste qui représente qui a déjà envoyé sa liste
-    private final int groupId;
     private boolean makeFinalList = false;  // indique si l'admin a demandé de faire une liste finale
+    private String password;
+
 
     public Group(String name, int id_owner, int[] id_members) {
         this.name = name;
         this.id_owner = id_owner;
         this.id_members = id_members;
-        this.groupId = 0;
     }
 
-    public Group(int groupId, int adminId){
-        this.groupId = groupId;
+    public Group(int adminId, String name, String password){
         this.id_owner = adminId;
+        this.name = name;
+        this.password = password;
         this.membersIdList = new LinkedList<>();
         membersIdList.add(adminId);
         listReceived = new ArrayList<>();
         listReceived.add(false);
-    }
-
-    public int getGroupId() {
-        return groupId;
     }
 
     public LinkedList<Integer> getMembersIdList() {
@@ -43,6 +40,10 @@ public class Group {
 
     public String name() {
         return name;
+    }
+
+    public boolean isOwner(int candidateId){
+        return id_owner == candidateId;
     }
 
     public boolean getMakeFinalList() {
