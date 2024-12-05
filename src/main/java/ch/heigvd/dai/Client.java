@@ -277,9 +277,8 @@ public class Client implements Callable<Integer> {
                     continue;
                 case ServAns.FORCE_QUIT:
                     System.out.println(MsgPrf + "You have been kicked from the group.");
-                    //quit the group
                     handleGroupQuit(in, out);
-                    return;
+                    continue;
                 case ACK_READY:
                     System.out.println(MsgPrf + "Server has received your readiness.");
                     return;
@@ -325,10 +324,10 @@ public class Client implements Callable<Integer> {
         while (input == BaseMenuCmd.INVALID) {
             System.out.print(">");
             clientIn = stdIn.readLine();
-            if (clientIn.equals("MENU")){   // special case because MENU is not linked to communication
-                showMenu();
-                continue;
-            }
+//            if (clientIn.equals("MENU")){   // special case because MENU is not linked to communication
+//                showMenu();
+//                continue;
+//            }
             input = decodeBaseMenuInput(clientIn);
 
             switch (input) {
