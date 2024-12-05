@@ -311,11 +311,11 @@ public class Server implements Callable<Integer> {
                     out.flush();
                     return;
                 } else if (getGroupByName(clientGroupName).getToBeDeleted()){
-                    System.out.println(MsgPrf + "Sending SEND_PREF_LIST ready to  ");
+                    System.out.println(MsgPrf + "Sending SEND_PREF_LIST ready to client " + clientId);
                     out.write(ServAns.SEND_PREF_LIST + END_OF_LINE);
                     out.flush();
-
                     String clientResponse = in.readLine();
+                    System.out.println("client response: " + clientResponse);
                     if (decodeClientMessage(clientResponse).equals(ClientMessages.READY_SEND)){
                         receiveList(in, out);
 
@@ -330,7 +330,6 @@ public class Server implements Callable<Integer> {
             System.out.println(MsgPrf + "Sending release ready to  ");
             out.write(ServAns.RELEASE_READY  + END_OF_LINE);
             out.flush();
-
 
             // membersReady.add(clientId);
         }
