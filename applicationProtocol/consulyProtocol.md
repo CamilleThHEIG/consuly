@@ -2,106 +2,181 @@
 
 **SECTION 3 NOT UP TO DATE**
 
-
-
 ## Section 1 - Overview
 
-Consuly protocol is a custom application protocol used by the application consuly. 
+Consuly protocol is a custom application protocol used by the application consuly. The goals is to allow a server to communicates with all its connected client to exchange information on which user joins which group, and to exchange contents of preference json files with only messages.
 
 ## Section 2 - Transport Protocol
 
-Consuly protocol uses UDP to be able to handle multiple communications at the same time.  **Used port is yet to be defined.**
+Consuly protocol uses multithreaded TCP to be able to handle multiple communications at the same time.  Default port is UTF-8.
 Every message must be encoded in UTF-8 and delimited by a newline character (\n). The messages are treated as text messages.  
 The emitter must initiate the communication with the server. Once connected to a server, a user can join or create a group.  
-When the client is done, it closes communication with the server, and when nobody is connected to the server for a delimited time,  
-it closes itself.
+When the client is done, it closes communication with the server
 
 Unknown messages are ignored.
 
 ## Section 3 - Messages
 
-*Work in progress. Would it better better to split client errors and server errors ?*
-
-ERROR <number> : indicates an error with it's number *number specifications yet to come*
-
 ### Establish connection
 
-CONNECT_SRV : a client indicates it wants to connect to it
+The client wants to establish first contact with the server.
 
-ACCEPT_CONNECT : server indicates the client connection is accepted. The client is now connected to the server.
+#### Connect to the server
 
-REFUSE_CONNECT : server indicates the client connection is refused. The connection process ends here.
+```CONNECT_SRV```
+a client indicates it wants to connect to the server
+
+#### Response
+
+- `ACCEPT_CONNECT` : the server accepts the connection, and indicates the client it's now connected to server
+- `REFUSE_CONNECT` : the server indicates it can not accept client connection
 
 ### Create a group
 
-CREATE_GROUP : connected client indicates it wants to create a group.
+#### Asking to create a group
 
-PASSWORD_FOR <groupeNumber> : in response to CREATE_GROUP, server gives the client the group number, and asks for the password.
+`CREATE_GROUP <groupName>` : a connected client indicates it wants to create a new group, with groupName beeing the
+name the group.
 
-PASSWORD <password> : the client indicates a password for a group. <password> should be some text containing only letters. Password will be reviewed by the server.
+#### Response
 
-VALID_PASSWD : server indicates the client that chosen password is valid. When sending this, the server needs to remember that this client is **admin** for this group number.
+- `CHOOSE_PASSWORD` : server indicates it wants client to choose a password for the group
 
-INVALID_PASSWD : server indicates the client that chosen password is not valid
+#### Set a password for the group
 
-### Delete a group
+`PASSWORD <password> ` : client indicates the chosen password for the group
 
-DELETE_GROUP : an admin indicates server that it want to delete its group.  Sender client now waits for the server to return SUCCESS_DELETION.
+#### Response
 
-Return ERROR 1 if the sender is not an admin
-
-FORCE_QUIT : asks a client to quit the server 
-
-SUCESS_DELETION : server indicates the admin of a group that the group was successfully deleted.
+- `VALID_PASSWORD` : server indicates the password is valid. Client is then considered to have joined the group, and to be it's admin.
+- `INVALID_PASSWORD` : server indicates the password is not valid
 
 ### Join a group
 
-JOIN <groupNumber> : client indicates it wants to join the group number <groupNumber>. Server will answer ERROR 3 if the group does not exist.
+#### Signify the group to join
 
-VERIFY_PSSWD : the server asks the the client who sent the previous JOIN for the group password.
+`JOIN <groupName>` : client indicates it wants to join the group with name <groupName>
 
-TRY_PASSWD <password> : client indicates the server that it thinks the password is <password>.
+#### Response
 
-### Quit a group
+- `VERIFY_PASSWD` : server asks the client to provide the group password
+- `INVALID_GROUP` : server indicates the group doesn't exist
 
-QUIT : the client indicates the server it wants to quit the group its in. 
+#### Asking to create a group
 
-ACK_QUIT : the server indicates the server that it understood that the client quitted its group
+`TRY_PASSWD <password>` : user tries <password> as the password to join the group
 
-### Send preferences
+#### Response
 
-READY_SEND : the client indicates the server that it's ready to send it's preference list. 
+- `PASSWD_SUCCESS` : server indicates that password was correct, and that it's now in the group
+- `RETRY_PASSWD` : server indicates that password was not correct, but that client can try again
+- `NO_MORE_TRIES` : server indicates that password was not correct, and that client can not try again
+- `ERROR_8` : unknown error happened during password verification
 
-READY_RECEIVE : the server indicates the client that it's ready to receive the list.
+### List existing groups
 
-SENDING_LIKES : the client indicates the server that it will now send what is in the like section of it's user file
+A user may want to know the already existing group, to make his choice on which to join.
 
-SENDING_DISLIKES : the client indicates the server that it will now send what is in the like section of it's user file
+#### Asking for existing groups
 
-SENDING_NEUTRAL : the client indicates the server that it will now send what is in the like section of it's user file
+`LIST_GROUPS` : client indicates the server that it wants to receive the list of existing groups
 
-STYLE <name> : client sends a style from it's user file, <name> being the name of the style.
+#### Response
 
-ACK : server indicates client that it correctly received the client's message
+- `NO_GROUP` : server indicates there is currently no group created
+- `AVAILABLE_GROUP <groupName>` : server indicates that group "groupName" is available. Server sends this message as long as
+  it has group names to send. Server ends the sending of group names with `END_OF_LIST`
 
-FINISHED : client indicates the server that it finished to send it's user list
+### Once in a group
 
+Once in a group, user can perform a few actions before the final playlist is made
 
+#### Quit a group
 
-### Listing existing groups
+`QUIT` : client indicates server it's quitting it's group. Only normal user can do that, no admin.
 
-LIST_GROUPS : client indicates it wants to sever to list the existing groups. Server can answer by START_SEND or NO_GROUPS
+#### Response
 
-GROUPS : server indicates their is no group to send
+- `ACK` : server indicates it acknowledged that client left his group
+- `ERROR_9` : server sends this error to indicate that user is not in a group
 
-START_SEND : server indicates it will now begin to send the existing groups. Client answer with ACK to inidcate it's ready to receive.
+#### Delete a group
 
-GROUP <id> : server indicates that group with id <id> it available. Client answers with ACK to indicate it acknoledged the information.
+Once in group, an admin may want to delete his group. Normal user can not do that.
 
-END_SEND_GROUPS : server indicates there is no more groups to send.
+- `DELETE_GROUP` : client indicates that it wants to delete it's group
 
+#### Response
 
+- `SUCCESS_DELETION` : server indicates that deletion succeeded
+- `FAILURE_DELETION` : server indicates that deletion failed
+- `ERROR_9` : server sends this error to indicate that user is not in a group
 
+#### Signify readyness
 
+Since this a bit particular, we will add a few precision.
+
+Consuly works with the logic that for (almost) each message client sends, server sends once answer. Each client has only
+on communication with the server, and can not listen for server message AND user input. That's how we can with this command.
+A user being "ready" indicates that it's ready to receive an order from the server. This order can either be to quit the server
+(because admin wanted to delete) or to send the preference list (in the background).
+
+`READY` : client indicates it's ready to received order
+
+#### Response
+
+- `FORCE_QUIT` : server indicates that it wants client to leave
+- `SEND_PREF_LIST` : server indicates that it wants the client to send its preference list
+- `RELEASE_READY` : server indicates client it releases the hold it had on it
+
+#### Make the final playlist
+
+Only admin can do that
+
+`MAKE` : client indicates the server that it wants to make the final playlist
+
+#### Response
+
+- `SEND_PREF_LIST` : server indicates that it wants the client to participate and to send its preference list
+
+#### Signify we start to send the list
+
+`READY_SEND` : client indicates the server it's ready to send it's preference list
+
+#### Response
+
+- `READY_RECEIVE` : server indicates it's ready to receive the informations
+- `ERROR` : an error occurred. Client should abord the process
+
+#### Specifying which sublist is sent now
+
+Client indicates which sublist styles will be sent now
+
+`SENDING_<SUBLISTNAME>` : client indicates the server it's going to send the styles from list <SUBLISTNAME>. <SUBLISTNAME>
+is either "LIKES", "DISLIKES", or "NEUTRAL"
+
+#### Response
+
+- `ACK` : server indicates it acknowledged the information
+- `ERROR` : an error occurred. Client should abord the process
+
+#### Sending a style
+
+`STYLE <nomStyle>` : client sends on the style <nomStyle>
+
+#### Response
+
+- `ACK` : server indicates it registered the style in the previously specified sublist
+- `ERROR_89` : server indicates that no sublist was specified
+
+#### End process of sending list
+
+`FINISHED` : client indicates it's done with its user preference list
+
+#### Response
+
+- `ACK` : server indicates it acknowledged
 
 ## Section 4 - Examples
+
+![Examples](consulyProtocol.png)

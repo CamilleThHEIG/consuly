@@ -7,12 +7,16 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.util.LinkedList;
 import java.util.Scanner;
 
 public class JSON {
     private final int id;
     private final String[] styles = {"Pop", "Rock", "Metal", "Classical"};
+    private String directory ="userfile/", filePath;
 
     public enum Taste {
         like, dislike, noopinion;
@@ -22,11 +26,8 @@ public class JSON {
 
     public JSON(int id){
         this.id = id;
+        filePath = directory + "user0.json";
         json = new JSONObject();
-    }
-
-    public JSON() {
-        this(0);
     }
 
     public LinkedList<String> getTaste(Taste taste) {
@@ -59,9 +60,9 @@ public class JSON {
     /**
      * Crée un fichier de préférence en demandant les préférences via la ligne de commande
      */
-    public void createByAsking() {
-        System.out.println("In createByAsking");
+    public void createByAsking() throws IOException {
         JSONArray dislike_list = new JSONArray(), noopinion_list = new JSONArray(), like_list = new JSONArray();
+
         Scanner stdIn = new Scanner(System.in);
         System.out.println("Please indicate how much you like these styles (with 'like', 'dislike', 'noopinion').");
         for (String style : styles){
@@ -85,8 +86,12 @@ public class JSON {
         json.put(Taste.dislike.name(), dislike_list);
         json.put(Taste.noopinion.name(), noopinion_list);
 
-        Integer idCreation = id;
-        try (FileWriter fileOut = new FileWriter("userfiles/user" + idCreation + ".json")) {
+        Path userfilesPath = Paths.get(directory);
+        if (!Files.exists(userfilesPath)) {
+            Files.createDirectories(userfilesPath);
+        }
+
+        try (FileWriter fileOut = new FileWriter(filePath)) {
             fileOut.write(json.toString(4)); // Indentation de 4 espaces pour rendre le fichier lisible
             fileOut.flush();
             System.out.println("Fichier JSON sauvegardé avec succès !");
@@ -124,7 +129,7 @@ public class JSON {
         json.put(Taste.like.name(), lList);
         json.put(Taste.dislike.name(), dList);
         json.put(Taste.noopinion.name(), nList);
-        try (FileWriter fileOut = new FileWriter("serverfiles/user" + id + ".json")) {
+        try (FileWriter fileOut = new FileWriter(filePath)) {
             fileOut.write(json.toString(4) + "\n"); // Indentation de 4 espaces pour rendre le fichier lisible
             fileOut.flush();
             System.out.println("Flushed");
