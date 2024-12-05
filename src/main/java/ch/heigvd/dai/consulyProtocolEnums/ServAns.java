@@ -10,6 +10,8 @@ public enum ServAns {
     ACK_QUIT,
     FORCE_QUIT,
     INVALID_GROUP,
+    READY_RECIEVE,
+    ACK_READY,
 
 
     VERIFY_PASSWD,
@@ -21,6 +23,8 @@ public enum ServAns {
     WAITING_USER_TO_QUIT,
     SUCCESS_DELETION,
     FAILURE_DELETION,
+
+    SUCCESS_QUIT,
 
     END_OF_LIST,
     NO_GROUP,
