@@ -1,4 +1,4 @@
-# todo-manager
+# consuly
 
 > Authors : Yoann Changanaqui, Camille Theubet
 
@@ -113,6 +113,3 @@ For help on any command, use:
 ```bash
 [COMMAND] -h
 ```
-
-## Authors
-Yoann Changanaqui & Camille Theubet
