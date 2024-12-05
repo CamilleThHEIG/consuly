@@ -22,24 +22,30 @@ These instructions will help you set up the project on your local machine.
 Prerequisites
 Ensure you have Java 11 or later installed. If you're unsure how to install Java, refer to this [guide](https://github.com/heig-vd-dai-course/heig-vd-dai-course/blob/e57a2205b48ce2a435624adbb713d83e30b408b0/04-java-intellij-idea-and-maven/COURSE_MATERIAL.md#install-sdkman).
 
+Have docker install in your linux environnment.
+
 Installing
-Clone the repository with:
+Get the consuly image with the command :
 ```bash
-git clone git@github.com:CamilleThHEIG/consuly.git
+docker pull ghcr.io/yoy017/consuly:latest
 ```
 
-Navigate to the project directory:
+Create your own docker network for communication between two terminal.
 ```bash
-cd consuly
+docker network create <networkname>
 ```
 
-Build the .jar files using Maven:
+Launch the server.
 ```bash
-mvn clean compile package
+docker run --rm -it --network <networkname> --name <servername> consuly server
 ```
 
-You can now run the application using the generated .jar files.
+Launch a client.
+```bash
+docker run --rm -it --network <networkname> consuly client --host <servername>
+```
 
+You can now run the application by running the docker image.
 ## How it Works
 This application operates on a Client-Server architecture:
 
