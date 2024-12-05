@@ -137,13 +137,13 @@ public class Client implements Callable<Integer> {
             switch (decodeServerAnswer(serverOut)) {
                 case ServAns.INVALID_GROUP:
                     System.out.println(ANSI_RED + MsgPrf + "The group does not exist." + ANSI_RESET);
-                    return false;
+                    return;
                 case ServAns.INVALID_ID:
                     System.out.println(ANSI_RED + MsgPrf + "You are not the owner of the group." + ANSI_RESET);
-                    return false;
+                    return;
                 case ServAns.FAILURE_DELETION:
                     System.out.println(ANSI_RED + MsgPrf + "Failed to delete the group." + ANSI_RESET);
-                    return false;
+                    return;
                 case ServAns.SUCCESS_DELETION:
                     System.out.println(ANSI_GREEN + MsgPrf + "Group deleted successfully." + ANSI_RESET);
                     isAdmin = false;
@@ -258,13 +258,11 @@ public class Client implements Callable<Integer> {
     }
 
     private void handleMake(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
-        System.out.println("In make function");
-
         out.write(ClientMessages.MAKE + END_OF_LINE);
         out.flush();
 
         String servResponse = in.readLine();
-        System.out.println("SWITCH");
+
         switch (decodeServerAnswer(servResponse)) {
             case SEND_PREF_LIST : sendPreferences(out, in);
                 break;
@@ -439,7 +437,6 @@ public class Client implements Callable<Integer> {
     private void sendList(BufferedWriter out, BufferedReader in, JSONArray list_to_send) throws IOException {
         for (int j = 0; j < list_to_send.length(); ++j) {
             clientIn = "STYLE<" + list_to_send.getString(j) + ">";
-            System.out.println("Sending : " + clientIn);
             out.write(clientIn + "\n");
             out.flush();
 

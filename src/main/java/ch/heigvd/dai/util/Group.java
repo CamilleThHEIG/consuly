@@ -6,11 +6,7 @@ import java.util.LinkedList;
 public class Group {
     private final String name;
     private final int id_owner;
-    private int[] id_members;
-    private LinkedList<Integer> membersIdList;  // liste qui représente les membres du groupes
-    private ArrayList<Boolean> listReceived;    // liste qui représente qui a déjà envoyé sa liste
-
-    private ArrayList<User> userList;   // list that combines the two above
+    private final ArrayList<User> userList;   // list that combines the two above
 
     private boolean toBeDeleted = false;
     private boolean onGoingMakeFinal = false;  // indique si l'admin a demandé de faire une liste finale
@@ -20,10 +16,6 @@ public class Group {
         this.id_owner = adminId;
         this.name = name;
         this.password = password;
-        this.membersIdList = new LinkedList<>();
-        membersIdList.add(adminId);
-        listReceived = new ArrayList<>();
-        listReceived.add(false);
 
         this.userList = new ArrayList<>();
         userList.add(new User(adminId, false));
@@ -32,13 +24,14 @@ public class Group {
 
 
     public LinkedList<Integer> getMembersIdList() {
-        return membersIdList;
+        LinkedList<Integer> listToReturn = new LinkedList<>();
+        for (User user : userList) {
+            listToReturn.add(user.getId());
+        }
+        return listToReturn;
     }
 
     public void addMember(int memberId) {
-        membersIdList.add(memberId);
-        listReceived.add(false);
-
         userList.add(new User(memberId, false));
     }
 
@@ -59,9 +52,6 @@ public class Group {
     }
 
     public void removeMember(int memberId) {
-        membersIdList.remove(memberId);
-        listReceived.remove(memberId);
-
         for (User user : userList) {
             if (user.getId() == memberId) {
                 userList.remove(user);
@@ -84,11 +74,11 @@ public class Group {
     }
 
     public boolean hasMember(int memberId){
-        return membersIdList.contains(memberId);
+        return getMembersIdList().contains(memberId);
     }
 
     public boolean everyoneButAdminLeft(){
-        return membersIdList.size() == 1 && membersIdList.getFirst() == id_owner;
+        return getMembersIdList().size() == 1 && getMembersIdList().getFirst() == id_owner;
     }
 
     public void memberSentList(int clientId){
@@ -104,29 +94,6 @@ public class Group {
             if (!user.listReceived()) return false;
         }
         return true;
-    }
-
-    public void notifiyListReceived(int memberId) {
-        // vérifier que le memberId est bien membre du groupe
-        int index = membersIdList.indexOf(memberId);
-
-        listReceived.set(index, true);
-
-        System.out.println(listReceived.size());
-        for (Boolean newB : listReceived) {
-            System.out.println(newB);
-        }
-    }
-
-    public boolean allListReceived(){
-        for (Boolean b : listReceived){
-            if (!b) return false;
-        }
-        return true;
-    }
-
-    public void joinGroup(Integer newMemberId) {
-        membersIdList.add(newMemberId);
     }
 
     @Override
