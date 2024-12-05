@@ -198,10 +198,10 @@ public class Client implements Callable<Integer> {
         out.write(ClientMessages.JOIN + " " + chosenGroupName + END_OF_LINE);
         out.flush();
 
-        String serverResponse, userPasswdGuess;
+        String userPasswdGuess;
         while (true) {
-            serverResponse = in.readLine();
-            switch (decodeServerAnswer(serverResponse)) {
+            serverOut = in.readLine();
+            switch (decodeServerAnswer(serverOut.split(" ")[0])) {
                 case VERIFY_PASSWD:
                     System.out.print("Password for this group: ");
                     userPasswdGuess = stdIn.readLine();
@@ -224,7 +224,7 @@ public class Client implements Callable<Integer> {
                     return true;
 
                 case NO_MORE_TRIES:
-                    System.out.println("Too many failed attempts. You cannot join this group.");
+                    System.out.println("Too many failed attempts. You cannot join this group, Bye bye.");
                     return false;
 
                 case INVALID_GROUP:
@@ -232,7 +232,7 @@ public class Client implements Callable<Integer> {
                     return false;
 
                 default:
-                    System.out.println("Unexpected response: " + serverResponse);
+                    System.out.println("Unexpected response: " + serverOut);
                     return false;
             }
         }
@@ -342,15 +342,17 @@ public class Client implements Callable<Integer> {
                 case CREATE:
                     System.out.print("What's the name of your awesome group ? ");
                     String groupName = stdIn.readLine();
-                    handleGroupCreation(in, out, stdIn, groupName);
+                    if(!handleGroupCreation(in, out, stdIn, groupName)) {
+                        System.out.println("Failed to create the group.");
+                    }
                     break;
                 case JOIN:
-                    System.out.println("IN JOIN PROCESS");
                     handleGroupList(in, out, stdIn);
                     System.out.print("Wich group do you want to join ? ");
                     String chosenGroupName = stdIn.readLine();
-                    handleGroupJoin(in, out, stdIn, chosenGroupName);
-                    System.out.println("OUT JOIN PROCESS");
+                    if(!handleGroupJoin(in, out, stdIn, chosenGroupName)) {
+                        socket.close();
+                    }
                     break;
                 case LIST:
                     handleGroupList(in, out, stdIn);
