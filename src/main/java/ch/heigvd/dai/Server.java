@@ -139,20 +139,6 @@ public class Server implements Callable<Integer> {
         }
 
         /**
-         * Notifie un client spécifique qu'il doit quitter un groupe en envoyant un message personnalisé.
-         *
-         * @param clientId L'identifiant du client à notifier.
-         */
-//        private void notifyClientToQuit(int clientId, BufferedWriter out) {
-//            try {
-//                out.write(ServAns.WAITING_USER_TO_QUIT + END_OF_LINE);
-//                out.flush();
-//            } catch (IOException e) {
-//                System.out.println("Error while notifying client to quit: " + e.getMessage());
-//            }
-//        }
-
-        /**
          * Fonction qui gère le processus de suppression d'un groupe
          * @param in
          * @param out
@@ -242,7 +228,7 @@ public class Server implements Callable<Integer> {
             }
 
             for (Group group : groups) {
-                out.write(group.name() + END_OF_LINE);
+                out.write(ServAns.AVAILABLE_GROUP + " " + group.name() + END_OF_LINE);
                 out.flush();
             }
             out.write(ServAns.END_OF_LIST + END_OF_LINE);
@@ -290,6 +276,7 @@ public class Server implements Callable<Integer> {
                         } else {
                             out.write(ServAns.NO_MORE_TRIES + END_OF_LINE);
                             out.flush();
+                            return;
                         }
                         break;
                     case INVALID:
@@ -299,7 +286,6 @@ public class Server implements Callable<Integer> {
         }
 
         public void handleReady(BufferedReader in, BufferedWriter out, int clientId) throws IOException {
-
             // on attend 10 secondes de voir si on demande quelque chose de nous
             int count = 0;
             while (count < 10) {
@@ -333,8 +319,6 @@ public class Server implements Callable<Integer> {
             System.out.println(MsgPrf + "Sending release ready to  ");
             out.write(ServAns.RELEASE_READY  + END_OF_LINE);
             out.flush();
-
-            // membersReady.add(clientId);
         }
 
         public void handleMake(BufferedReader in, BufferedWriter out) throws IOException {

@@ -11,6 +11,7 @@ public enum ServAns {
     FORCE_QUIT,
     INVALID_GROUP,
     READY_RECEIVE,
+    AVAILABLE_GROUP,
     RELEASE_READY,
     SEND_PREF_LIST,
 
