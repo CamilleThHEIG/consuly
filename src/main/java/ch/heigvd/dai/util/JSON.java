@@ -11,39 +11,22 @@ import java.util.LinkedList;
 import java.util.Scanner;
 
 public class JSON {
-    private final String username;
-    private int id;
+    private final int id;
     private final String[] styles = {"Pop", "Rock", "Metal", "Classical"};
 
     public enum Taste {
         like, dislike, noopinion;
     };
 
-    private JSONObject json;
+    private final JSONObject json;
 
     public JSON(int id){
         this.id = id;
-        this.username = "default";
         json = new JSONObject();
     }
 
     public JSON() {
         this(0);
-    }
-
-    public JSON(String username) {
-        this.username = username;
-        this.id = 0;
-        json = new JSONObject();
-        if (!new java.io.File("user" + username + ".json").exists()) {
-            createByAsking();
-        } else {
-            try (FileReader fileIn = new FileReader("user" + username + ".json")) {
-                json = new JSONObject(new Scanner(fileIn).useDelimiter("\\A").next());
-            } catch (IOException e) {
-                System.err.println("Erreur lors de la lecture du fichier JSON : " + e.getMessage());
-            }
-        }
     }
 
     public LinkedList<String> getTaste(Taste taste) {
@@ -151,6 +134,7 @@ public class JSON {
         }
         System.out.println("End of writeFileWithLists.");
     }
+
     /**
      return le Taste d'un style donné dans les tableaux spécifiés
      */

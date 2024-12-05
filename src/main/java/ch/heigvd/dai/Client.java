@@ -25,7 +25,7 @@ import ch.heigvd.dai.consulyProtocolEnums.*;
 @CommandLine.Command(name = "client", description = "Launch the client side of the application.")
 public class Client implements Callable<Integer> {
     private static final String END_OF_LINE = "\n";
-    private static final String MsgPrf = "[Client] : ";
+    private static final String MsgPrf = "[Client] ";
     private static boolean connectedToServer, inAGroup = false;
     private boolean isAdmin = false;
     private ClientMessages clientMessage;
@@ -33,6 +33,7 @@ public class Client implements Callable<Integer> {
     private String serverOut, clientIn;
     private int id;
     private String joinedGroupName = null;
+    public static final String ANSI_RESET = "\u001B[0m", ANSI_GREEN = "\u001B[32m", BACKGROUND_RED = "\u001B[41m", ANSI_RED = "\u001B[31m", ANSI_YELLOW = "\u001B[33m";
 
 
     @CommandLine.Option(
@@ -70,28 +71,28 @@ public class Client implements Callable<Integer> {
 
     private void showGroupMenu(){
         if (joinedGroupName == null) {
-            System.out.println("WEIRD. No group joined");
+            System.out.println("Currently not in a group.");
             return;
         }
 
         System.out.print("Currently in group " + joinedGroupName + ". Choose an option: ");
         if (isAdmin){
             System.out.println("(you are admin)");
-            System.out.println("MAKE : make the final playlist for the group");
-            System.out.println("DELETE : delete the group");
+            System.out.println(ANSI_GREEN + "\tMAKE" + ANSI_RESET  + " make the final playlist for the group");
+            System.out.println(ANSI_RED + "\tDELETE" + ANSI_RESET  + " delete the group" + ANSI_RESET);
         } else {
-            System.out.println("\nREADY : signify the server that you are ready for final playlist (or be kicked)");
+            System.out.println(ANSI_GREEN + "\nREADY" + ANSI_RESET + " signify the server that you are ready for final playlist (or be kicked)");
+            System.out.println(BACKGROUND_RED + "\tQUIT" + ANSI_RESET + " quit the group");
         }
-        System.out.println("QUIT : quit the group");
         System.out.print("->");
     }
 
     private void showMenu(){
         System.out.println("Choose an option ?");
-        System.out.println("CREATE : create a new group");
-        System.out.println("JOIN : join a group");
-        System.out.println("LIST : Display all existing groups");
-        System.out.println("QUIT");
+        System.out.println(ANSI_GREEN + "\tCREATE " + ANSI_RESET + " create a group" + ANSI_RESET);
+        System.out.println(ANSI_GREEN + "\tJOIN " + ANSI_RESET + " join a group");
+        System.out.println(ANSI_GREEN + "\tLIST " + ANSI_RESET + "  Display all existing groups");
+        System.out.println(BACKGROUND_RED + "\tQUIT" + ANSI_RESET);
     }
 
     private GroupMenuCmd decodeGroupMenuInput(String input){
@@ -116,49 +117,43 @@ public class Client implements Callable<Integer> {
         } catch (IllegalArgumentException e) {
             return ServAns.WEIRD_ANSWER;
         } catch (NullPointerException e) {
-            System.out.println("Can not decode NULL");
+            System.out.println(ANSI_RED + "Can not decode NULL" + ANSI_RESET);
             return null;
         }
     }
 
-    // handleReady(.....){
-    // rep = in.readline()
-    // en fonction de rep (qui peut être SEND_LIST, OU FORCEQUIT, ou REALEASE_READY) faire une action
-
-    private boolean handleGroupDeletion(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
+    private void handleGroupDeletion(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
         System.out.println("Group deletion");
 
         if (joinedGroupName == null) {
             System.out.println("WEIRD. No group joined");
-            return false;
+            return;
         }
         // DELETE_GROUP <groupname>
         out.write(ClientMessages.DELETE_GROUP + " " + this.id + END_OF_LINE); // Send the client id for verification
         out.flush();
         while(true) {
             serverOut = in.readLine();
-            System.out.println("Server output: " + serverOut);
             switch (decodeServerAnswer(serverOut)) {
                 case ServAns.INVALID_GROUP:
-                    System.out.println(MsgPrf + "The group does not exist.");
+                    System.out.println(ANSI_RED + MsgPrf + "The group does not exist." + ANSI_RESET);
                     return false;
                 case ServAns.INVALID_ID:
-                    System.out.println(MsgPrf + "You are not the owner of the group.");
+                    System.out.println(ANSI_RED + MsgPrf + "You are not the owner of the group." + ANSI_RESET);
                     return false;
                 case ServAns.FAILURE_DELETION:
-                    System.out.println(MsgPrf + "Failed to delete the group.");
+                    System.out.println(ANSI_RED + MsgPrf + "Failed to delete the group." + ANSI_RESET);
                     return false;
                 case ServAns.SUCCESS_DELETION:
-                    System.out.println(MsgPrf + "Group deleted successfully.");
+                    System.out.println(ANSI_GREEN + MsgPrf + "Group deleted successfully." + ANSI_RESET);
                     isAdmin = false;
                     inAGroup = false;
-                    return true;
+                    return;
                 case null:
-                    System.out.println("Received a null response.");
+                    System.out.println(ANSI_RED + "Received a null response." + ANSI_RESET);
                     break;
                 default:
                     System.out.println("WEIRD : received " + serverOut);
-
             }
         }
     }
@@ -176,16 +171,17 @@ public class Client implements Callable<Integer> {
                 case PASSWORD_FOR:
                     System.out.print("Enter a password for the group : ");
                     password = stdIn.readLine();
+                    System.out.println();
                     out.write(ClientMessages.PASSWORD + " " + password + END_OF_LINE);
                     out.flush();
                     break;
                 case ServAns.VALID_PASSWORD:
-                    System.out.println(MsgPrf + "Group created successfully.");
+                    System.out.println(ANSI_GREEN + MsgPrf + "Group created successfully." + ANSI_RESET);
                     isAdmin = inAGroup = true;
                     joinedGroupName = groupname;
                     return true;
                 case ServAns.INVALID_PASSWORD:
-                    System.out.println(MsgPrf + "Invalid password");
+                    System.out.println(ANSI_RED + MsgPrf + "Invalid password" + ANSI_RESET);
                     return false;
             }
         }
@@ -207,7 +203,7 @@ public class Client implements Callable<Integer> {
                     break;
 
                 case RETRY_PASSWD:
-                    System.out.println("Incorrect password. Please try again.");
+                    System.out.println(ANSI_RED + "Incorrect password. Please try again." + ANSI_RESET);
                     System.out.print("Password for this group: ");
                     userPasswdGuess = stdIn.readLine();
                     out.write(ClientMessages.TRY_PASSWD + " " + userPasswdGuess + END_OF_LINE);
@@ -215,21 +211,21 @@ public class Client implements Callable<Integer> {
                     break;
 
                 case PASSWD_SUCCESS:
-                    System.out.println("Successfully joined the group!");
+                    System.out.println(ANSI_GREEN + "Successfully joined the group!" + ANSI_RESET);
                     inAGroup = true;
                     joinedGroupName = chosenGroupName;
                     return true;
 
                 case NO_MORE_TRIES:
-                    System.out.println("Too many failed attempts. You cannot join this group, Bye bye.");
+                    System.out.println(ANSI_RED + "Too many failed attempts. You cannot join this group, Bye bye." + ANSI_RESET);
                     return false;
 
                 case INVALID_GROUP:
-                    System.out.println("The group does not exist.");
+                    System.out.println(ANSI_RED + "The group does not exist." + ANSI_RESET);
                     return false;
 
                 default:
-                    System.out.println("Unexpected response: " + serverOut);
+                    System.out.println(ANSI_RED + "Unexpected response: " + serverOut + ANSI_RESET);
                     return false;
             }
         }
@@ -256,31 +252,48 @@ public class Client implements Callable<Integer> {
                     System.out.println(MsgPrf + "No group available.");
                     return;
                 default:
-                    System.out.println(serverOut);
+                    System.out.print(ANSI_YELLOW + serverOut + ANSI_RESET + " ");
             }
         }
     }
 
-    private void handleMake(BufferedReader in, BufferedWriter out, BufferedReader stdIn) {
+    private void handleMake(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
+        System.out.println("In make function");
 
+        out.write(ClientMessages.MAKE + END_OF_LINE);
+        out.flush();
+
+        String servResponse = in.readLine();
+        System.out.println("SWITCH");
+        switch (decodeServerAnswer(servResponse)) {
+            case SEND_PREF_LIST : sendPreferences(out, in);
+                break;
+            default:
+                System.out.println("Weird response : " + servResponse);
+        }
+
+        System.out.println(MsgPrf + "Exit handle make");
     }
 
     private void handleReady(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
         out.write(ClientMessages.READY + " " + this.id + END_OF_LINE);
         out.flush();
 
+        System.out.println("You signified that you are ready ...");
         while(true) {
             serverOut = in.readLine();
             switch (decodeServerAnswer(serverOut)) {
-                case ServAns.WAITING_USER_TO_QUIT:
-                    System.out.println(MsgPrf + "Waiting for users to quit the group.");
-                    continue;
                 case ServAns.FORCE_QUIT:
-                    System.out.println(MsgPrf + "You have been kicked from the group.");
+                    System.out.println(ANSI_RED + MsgPrf + "You have been kicked from the group." + ANSI_RESET);
                     handleGroupQuit(in, out);
-                    continue;
-                case ACK_READY:
-                    System.out.println(MsgPrf + "Server has received your readiness.");
+                    return;
+                case ServAns.SEND_PREF_LIST:
+                    // envoyer la liste de préférence
+                    sendPreferences(out, in);
+                    return;
+
+                case ServAns.RELEASE_READY:
+                    System.out.println(ANSI_GREEN + MsgPrf + "You can now act again." + ANSI_RESET);
                     return;
             }
         }
@@ -289,10 +302,10 @@ public class Client implements Callable<Integer> {
     private void groupMenu(Socket socket, BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
         // maybe ask the group info to the server
         showGroupMenu();
-        GroupMenuCmd input = GroupMenuCmd.INVALID;
-        while (input == GroupMenuCmd.INVALID) {
+        while (true) {
             System.out.print(">");
             clientIn = stdIn.readLine();
+            System.out.print(END_OF_LINE);
             // if not admin, have an other dedicated switch
             switch (decodeGroupMenuInput(clientIn)) {
                 case MAKE:
@@ -312,7 +325,7 @@ public class Client implements Callable<Integer> {
                     socket.close();
                     return;
                 case INVALID:
-                    System.out.println("Invalid input. Try again");
+                    System.out.println(ANSI_RED + "Invalid input. Try again" + ANSI_RESET);
                     break;
             }
         }
@@ -324,10 +337,7 @@ public class Client implements Callable<Integer> {
         while (input == BaseMenuCmd.INVALID) {
             System.out.print(">");
             clientIn = stdIn.readLine();
-//            if (clientIn.equals("MENU")){   // special case because MENU is not linked to communication
-//                showMenu();
-//                continue;
-//            }
+            System.out.print(END_OF_LINE);
             input = decodeBaseMenuInput(clientIn);
 
             switch (input) {
@@ -335,7 +345,7 @@ public class Client implements Callable<Integer> {
                     System.out.print("What's the name of your awesome group ? ");
                     String groupName = stdIn.readLine();
                     if(!handleGroupCreation(in, out, stdIn, groupName)) {
-                        System.out.println("Failed to create the group.");
+                        System.out.println(ANSI_RED + "Failed to create the group." + ANSI_RESET);
                     }
                     break;
                 case JOIN:
@@ -353,7 +363,7 @@ public class Client implements Callable<Integer> {
                     socket.close();
                     break;
                 case INVALID:
-                    System.out.println("Invalid input. Try again\n\n");
+                    System.out.println(ANSI_RED + "Invalid input. Try again\n\n" + ANSI_RESET);
                     break;
             }
         }
@@ -396,7 +406,7 @@ public class Client implements Callable<Integer> {
             System.out.println("End of transmission with server");
 
         } catch (IOException e) {
-            System.out.println("Unable to connect to host " + host + " on port " + port);
+            System.out.println(ANSI_RED + "Unable to connect to host " + host + " on port " + port + ANSI_RESET);
         }
         return 0;
     }
@@ -413,7 +423,7 @@ public class Client implements Callable<Integer> {
         out.flush();
         serverOut = in.readLine();
         if (!serverOut.equals("ACK")) {
-            System.out.println("WEIRD RESPONSE " + serverOut + " TO " + message);
+            System.out.println(ANSI_RED + "WEIRD RESPONSE " + serverOut + " TO " + message + ANSI_RESET);
         } else {
             //System.out.println("Received : " + serverResponse);
         }
@@ -435,7 +445,7 @@ public class Client implements Callable<Integer> {
 
             serverOut = in.readLine();
             if (!serverOut.equals("ACK")) {
-                System.out.println("WEIRD RESPONSE " + serverOut + " TO " + clientIn);
+                System.out.println(ANSI_RED + "WEIRD RESPONSE " + serverOut + " TO " + clientIn + ANSI_RESET);
             }
         }
     }
@@ -449,14 +459,13 @@ public class Client implements Callable<Integer> {
     private void sendPreferences(BufferedWriter out, BufferedReader in) throws IOException {
         // this section will later be replaced with cleaner interaction with json
         try (FileReader reader = new FileReader("userfiles/user0.json")) {
-            System.out.println("Sending READY_SEND");
             out.write("READY_SEND\n");
             out.flush();
             serverOut = in.readLine();
             if (!serverOut.equals("READY_RECEIVE")) {
-                System.out.println("WEIRD RESPONSE " + serverOut + " TO READY_SEND");
+                System.out.println(ANSI_RED + "WEIRD RESPONSE " + serverOut + " TO READY_SEND" + ANSI_RESET);
             } else {
-                System.out.println("Received : " + serverOut);
+                System.out.println(ANSI_GREEN + "Received : " + serverOut + ANSI_RESET);
             }
 
             // Lire le contenu du fichier dans une chaîne
@@ -481,7 +490,7 @@ public class Client implements Callable<Integer> {
             sendAckExpectedMessage(out, in, "FINISHED");
 
         } catch (IOException e) {
-            System.err.println("Erreur lors de la lecture du fichier JSON : " + e.getMessage());
+            System.err.println(ANSI_RED + "Erreur lors de la lecture du fichier JSON : " + e.getMessage() + ANSI_RESET);
         }
     }
 }
