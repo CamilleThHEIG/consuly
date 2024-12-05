@@ -96,7 +96,6 @@ public class Server implements Callable<Integer> {
             return false;
         }
 
-
         private boolean removeGroup(String name) {
             Iterator<Group> it = groups.iterator();
             while (it.hasNext()) {
@@ -224,7 +223,7 @@ public class Server implements Callable<Integer> {
             }
 
             for (Group group : groups) {
-                out.write(group.name() + END_OF_LINE);
+                out.write(ServAns.AVAILABLE_GROUP + " " + group.name() + END_OF_LINE);
                 out.flush();
             }
             out.write(ServAns.END_OF_LIST + END_OF_LINE);
@@ -270,6 +269,7 @@ public class Server implements Callable<Integer> {
                         } else {
                             out.write(ServAns.NO_MORE_TRIES + END_OF_LINE);
                             out.flush();
+                            return;
                         }
                         break;
                     case INVALID:
@@ -280,7 +280,7 @@ public class Server implements Callable<Integer> {
         }
 
         public void handleReady(BufferedReader in, BufferedWriter out, int clientId) throws IOException {
-            out.write(ServAns.READY_RECIEVE + END_OF_LINE);
+            out.write(ServAns.READY_RECEIVE + END_OF_LINE);
             out.flush();
 
             out.write(ServAns.ACK_READY + END_OF_LINE);

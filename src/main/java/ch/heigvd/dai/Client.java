@@ -112,7 +112,8 @@ public class Client implements Callable<Integer> {
 
     private ServAns decodeServerAnswer(String response) {
         try{
-            return ServAns.valueOf(response);
+            String message = response.split(" ")[0];
+            return ServAns.valueOf(message);
         } catch (IllegalArgumentException e) {
             return ServAns.WEIRD_ANSWER;
         } catch (NullPointerException e) {
@@ -242,21 +243,24 @@ public class Client implements Callable<Integer> {
         out.flush();
     }
 
-    private void handleGroupList(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
+    private boolean handleGroupList(BufferedReader in, BufferedWriter out) throws IOException {
         out.write(ClientMessages.LIST_GROUPS + END_OF_LINE);
         out.flush();
-
         while(true) {
             serverOut = in.readLine();
             switch (decodeServerAnswer(serverOut)) {
                 case ServAns.END_OF_LIST:
                     System.out.println(MsgPrf + "End of list.");
-                    return;
+                    return true;
                 case ServAns.NO_GROUP:
                     System.out.println(MsgPrf + "No group available.");
-                    return;
-                default:
-                    System.out.println(serverOut);
+                    return false;
+                case ServAns.AVAILABLE_GROUP:
+                    System.out.println("GROUP : " + serverOut.split(" ")[1]);
+                    break;
+                case ServAns.WEIRD_ANSWER:
+                    System.out.println("WEIRD " + serverOut);
+                    return false;
             }
         }
     }
@@ -324,10 +328,6 @@ public class Client implements Callable<Integer> {
         while (input == BaseMenuCmd.INVALID) {
             System.out.print(">");
             clientIn = stdIn.readLine();
-//            if (clientIn.equals("MENU")){   // special case because MENU is not linked to communication
-//                showMenu();
-//                continue;
-//            }
             input = decodeBaseMenuInput(clientIn);
 
             switch (input) {
@@ -339,15 +339,19 @@ public class Client implements Callable<Integer> {
                     }
                     break;
                 case JOIN:
-                    handleGroupList(in, out, stdIn);
-                    System.out.print("Wich group do you want to join ? ");
+                    if (!handleGroupList(in, out)){
+                        System.out.println("LIST BREAKING");
+                        break;
+                    }
+                    System.out.print("Which group do you want to join ? ");
                     String chosenGroupName = stdIn.readLine();
                     if(!handleGroupJoin(in, out, stdIn, chosenGroupName)) {
-                        socket.close();
+                        System.out.println("RETURNING");
+                        return;
                     }
                     break;
                 case LIST:
-                    handleGroupList(in, out, stdIn);
+                    handleGroupList(in, out);
                     break;
                 case QUIT:
                     socket.close();
@@ -389,6 +393,7 @@ public class Client implements Callable<Integer> {
                 if (inAGroup){
                     groupMenu(socket, in, out, stdIn);
                 } else {
+                    System.out.println("BASE SERVER MENU");
                     baseServerMenu(socket, in, out, stdIn);
                 }
             }
