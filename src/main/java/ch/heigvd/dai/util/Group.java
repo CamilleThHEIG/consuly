@@ -10,7 +10,7 @@ public class Group {
     private LinkedList<Integer> membersIdList;  // liste qui représente les membres du groupes
     private ArrayList<Boolean> listReceived;    // liste qui représente qui a déjà envoyé sa liste
 
-    private boolean toBeDeleted;
+    private boolean toBeDeleted = false;
     private boolean makeFinalList = false;  // indique si l'admin a demandé de faire une liste finale
     private final String password;
 
@@ -31,6 +31,14 @@ public class Group {
     public void addMember(int memberId) {
         membersIdList.add(memberId);
         listReceived.add(false);
+    }
+
+    public void setToBeDeleted(boolean toBeDeleted) {
+        this.toBeDeleted = toBeDeleted;
+    }
+
+    public boolean getToBeDeleted() {
+        return toBeDeleted;
     }
 
     public void removeMember(int memberId) {
@@ -55,7 +63,7 @@ public class Group {
     }
 
     public boolean everyoneButAdminLeft(){
-        return membersIdList.size() == 1 && membersIdList.get(0) == id_owner;
+        return membersIdList.size() == 1 && membersIdList.getFirst() == id_owner;
     }
 
     public boolean getMakeFinalList() {

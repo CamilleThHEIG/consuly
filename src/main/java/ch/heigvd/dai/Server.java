@@ -75,9 +75,8 @@ public class Server implements Callable<Integer> {
     static class ClientHandler implements Runnable {
         private final int clientId;
         private boolean clientInGroup = false;
+        private String clientGroupName = "";    // "" meaning no group name
         private final Socket socket;
-        private ClientMessages clientMessage;
-        private ServAns servAnswer;
         private String serverOut, clientIn;
 
         public ClientHandler(Socket socket, int clientId) {
@@ -119,6 +118,15 @@ public class Server implements Callable<Integer> {
             return null;
         }
 
+        private Group getGroupByName(String groupName) {
+            for (Group group : groups) {
+                if (group.name().equals(groupName)) {
+                    return group;
+                }
+            }
+            return null;
+        }
+
         /**
          * Notifie un client spécifique qu'il doit quitter un groupe en envoyant un message personnalisé.
          *
@@ -141,6 +149,8 @@ public class Server implements Callable<Integer> {
          * @throws IOException
          */
         private boolean handleGroupDeletion(BufferedReader in, BufferedWriter out, int clientId) throws IOException {
+            // only an admin should be allowed to call this
+
             Group myClientGroup = getGroupWithAdminId(clientId);
 
             if (myClientGroup == null) {
@@ -151,6 +161,9 @@ public class Server implements Callable<Integer> {
 
             // sendForceQuit to everyone
 
+            getGroupWithAdminId(clientId).setToBeDeleted(true);
+
+            // waiting for everyone to quit
             while(!getGroupWithAdminId(clientId).everyoneButAdminLeft()) {
                 try {
                     TimeUnit.SECONDS.sleep(1);
@@ -171,16 +184,8 @@ public class Server implements Callable<Integer> {
 
             out.write(ServAns.SUCCESS_DELETION + END_OF_LINE);
             out.flush();
+            clientGroupName = "";
             return true;
-        }
-
-        private Group getGroupByName(String groupName) {
-            for (Group group : groups) {
-                if (group.name().equals(groupName)) {
-                    return group;
-                }
-            }
-            return null;
         }
 
         /**
@@ -256,6 +261,7 @@ public class Server implements Callable<Integer> {
                                 getGroupByName(groupName).addMember(clientId);
                                 clientInGroup = true;
                                 System.out.println(MsgPrf + "Client " + clientId + " successfully joined group " + groupName);
+                                clientGroupName = groupName;
                                 out.write(ServAns.PASSWD_SUCCESS + END_OF_LINE);
                                 out.flush();
 
@@ -290,8 +296,21 @@ public class Server implements Callable<Integer> {
                 } catch (InterruptedException e) {
                     System.out.println("INTERRUPTED");
                 }
+
+                if (getGroupByName(clientGroupName).getToBeDeleted()){
+                    System.out.println(MsgPrf + "Sending FORCE_QUIT ready to  ");
+                    out.write(ServAns.FORCE_QUIT + END_OF_LINE);
+                    out.flush();
+                    return;
+                } else if (getGroupByName(clientGroupName).getToBeDeleted()){
+                    System.out.println(MsgPrf + "Sending SEND_PREF_LIST ready to  ");
+                    out.write(ServAns.SEND_PREF_LIST + END_OF_LINE);
+                    out.flush();
+                    return;
+                }
                 count +=1;
             }
+
 
             System.out.println(MsgPrf + "Sending release ready to  ");
             out.write(ServAns.RELEASE_READY  + END_OF_LINE);
@@ -312,6 +331,7 @@ public class Server implements Callable<Integer> {
                     group.removeMember(clientId);
                     out.write(ServAns.ACK_QUIT + END_OF_LINE);
                     out.flush();
+                    clientGroupName = "";
                     return;
                 }
             }
