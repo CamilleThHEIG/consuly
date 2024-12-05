@@ -12,5 +12,6 @@ public enum ClientMessages {
     LIST_GROUPS,
     JOIN,
     TRY_PASSWD,
+    READY_SEND,
     INVALID
 }
