@@ -194,27 +194,48 @@ public class Client implements Callable<Integer> {
         }
     }
 
-    private void handleGroupJoin(BufferedReader in, BufferedWriter out, BufferedReader stdIn) {
-//         out.write(ClientMessages.JOIN + " " + groupname + END_OF_LINE);
-//         out.flush();
-//         String serverResponse = in.readLine();
-//         switch (decodeServerAnswer(serverResponse)) {
-//             case ServAns.INVALID_GROUP:
-//                 System.out.println(MsgPrf + "The group does not exist.");
-//                 return false;
-//             case ServAns.INVALID_ID:
-//                 System.out.println(MsgPrf + "You are not the owner of the group.");
-//                 return false;
-//             case ServAns.FAILURE_DELETION:
-//                 System.out.println(MsgPrf + "Failed to delete the group.");
-//                 return false;
-//             case ServAns.WAITING_USER_TO_QUIT:
-//                 System.out.println(MsgPrf + "Waiting for users to quit the group.");
-//                 continue;
-//             case ServAns.SUCCESS_DELETION:
-//                 System.out.println(MsgPrf + "Group deleted successfully.");
-//                 return true;
-//         }
+    private boolean handleGroupJoin(BufferedReader in, BufferedWriter out, BufferedReader stdIn, String chosenGroupName) throws IOException {
+        out.write(ClientMessages.JOIN + " " + chosenGroupName + END_OF_LINE);
+        out.flush();
+
+        String userPasswdGuess;
+        while (true) {
+            serverOut = in.readLine();
+            switch (decodeServerAnswer(serverOut.split(" ")[0])) {
+                case VERIFY_PASSWD:
+                    System.out.print("Password for this group: ");
+                    userPasswdGuess = stdIn.readLine();
+                    out.write(ClientMessages.TRY_PASSWD + " " + userPasswdGuess + END_OF_LINE);
+                    out.flush();
+                    break;
+
+                case RETRY_PASSWD:
+                    System.out.println("Incorrect password. Please try again.");
+                    System.out.print("Password for this group: ");
+                    userPasswdGuess = stdIn.readLine();
+                    out.write(ClientMessages.TRY_PASSWD + " " + userPasswdGuess + END_OF_LINE);
+                    out.flush();
+                    break;
+
+                case PASSWD_SUCCESS:
+                    System.out.println("Successfully joined the group!");
+                    inAGroup = true;
+                    joinedGroupName = chosenGroupName;
+                    return true;
+
+                case NO_MORE_TRIES:
+                    System.out.println("Too many failed attempts. You cannot join this group, Bye bye.");
+                    return false;
+
+                case INVALID_GROUP:
+                    System.out.println("The group does not exist.");
+                    return false;
+
+                default:
+                    System.out.println("Unexpected response: " + serverOut);
+                    return false;
+            }
+        }
     }
 
     private void handleGroupQuit(BufferedReader in, BufferedWriter out) throws IOException {
@@ -277,8 +298,6 @@ public class Client implements Callable<Integer> {
         }
     }
 
-
-
     private void groupMenu(Socket socket, BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
         // maybe ask the group info to the server
         showGroupMenu();
@@ -307,7 +326,6 @@ public class Client implements Callable<Integer> {
         }
     }
 
-
     private void baseServerMenu(Socket socket, BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
         showMenu();
         BaseMenuCmd input = BaseMenuCmd.INVALID;
@@ -324,12 +342,17 @@ public class Client implements Callable<Integer> {
                 case CREATE:
                     System.out.print("What's the name of your awesome group ? ");
                     String groupName = stdIn.readLine();
-                    handleGroupCreation(in, out, stdIn, groupName);
+                    if(!handleGroupCreation(in, out, stdIn, groupName)) {
+                        System.out.println("Failed to create the group.");
+                    }
                     break;
                 case JOIN:
                     handleGroupList(in, out, stdIn);
-                    System.out.println("Which group do you want to join ?");
-                    handleGroupJoin(in, out, stdIn);
+                    System.out.print("Wich group do you want to join ? ");
+                    String chosenGroupName = stdIn.readLine();
+                    if(!handleGroupJoin(in, out, stdIn, chosenGroupName)) {
+                        socket.close();
+                    }
                     break;
                 case LIST:
                     handleGroupList(in, out, stdIn);
