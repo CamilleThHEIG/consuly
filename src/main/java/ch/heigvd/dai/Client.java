@@ -32,7 +32,7 @@ public class Client implements Callable<Integer> {
     private ServAns servAnswer;
     private String serverOut, clientIn;
     private int id;
-    private String joinedGroupName = null;
+    private String joinedGroupName = "";
     public static final String ANSI_RESET = "\u001B[0m", ANSI_GREEN = "\u001B[32m", BACKGROUND_RED = "\u001B[41m", ANSI_RED = "\u001B[31m", ANSI_YELLOW = "\u001B[33m";
 
 
@@ -214,13 +214,14 @@ public class Client implements Callable<Integer> {
                     return true;
 
                 case NO_MORE_TRIES:
-                    System.out.println(ANSI_RED + "Too many failed attempts. You cannot join this group, Bye bye." + ANSI_RESET);
+                    System.out.println(ANSI_RED + "Too many failed attempts. You cannot join this group, bye bye." + ANSI_RESET);
                     return false;
-
                 case INVALID_GROUP:
                     System.out.println(ANSI_RED + "The group does not exist." + ANSI_RESET);
                     return false;
-
+                case ERROR_8:
+                    System.out.println(ANSI_RED + "Error happened during password verification" + ANSI_RESET);
+                    return false;
                 default:
                     System.out.println(ANSI_RED + "Unexpected response: " + serverOut + ANSI_RESET);
                     return false;
@@ -228,8 +229,8 @@ public class Client implements Callable<Integer> {
         }
     }
 
-    private void handleGroupQuit(BufferedReader in, BufferedWriter out) throws IOException {
-        joinedGroupName = null;
+    private void handleGroupQuit(BufferedWriter out) throws IOException {
+        joinedGroupName = "";
         inAGroup = false;
         out.write(ClientMessages.QUIT + END_OF_LINE);
         out.flush();
@@ -246,9 +247,9 @@ public class Client implements Callable<Integer> {
                     return true;
                 case ServAns.NO_GROUP:
                     System.out.println(MsgPrf + "No group available.");
-
                     return false;
                 case ServAns.AVAILABLE_GROUP:
+                    // TODO maybe improve this display if possible ?
                     System.out.println("GROUP : " + serverOut.split(" ")[1]);
                     break;
                 case ServAns.WEIRD_ANSWER:
@@ -270,8 +271,6 @@ public class Client implements Callable<Integer> {
             default:
                 System.out.println("Weird response : " + servResponse);
         }
-
-        System.out.println(MsgPrf + "Exit handle make");
     }
 
     private void handleReady(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
@@ -284,7 +283,7 @@ public class Client implements Callable<Integer> {
             switch (decodeServerAnswer(serverOut)) {
                 case ServAns.FORCE_QUIT:
                     System.out.println(ANSI_RED + MsgPrf + "You have been kicked from the group." + ANSI_RESET);
-                    handleGroupQuit(in, out);
+                    handleGroupQuit(out);
                     return;
                 case ServAns.SEND_PREF_LIST:
                     // envoyer la liste de préférence
@@ -305,7 +304,7 @@ public class Client implements Callable<Integer> {
             System.out.print(">");
             clientIn = stdIn.readLine();
             System.out.print(END_OF_LINE);
-            // if not admin, have an other dedicated switch
+            // if not admin, have another dedicated switch
             switch (decodeGroupMenuInput(clientIn)) {
                 case MAKE:
                     System.out.println("Making the final playlist");
@@ -320,7 +319,7 @@ public class Client implements Callable<Integer> {
                     return;
                 case QUIT:
                     if (isAdmin) handleGroupDeletion(in, out); // Delete le group avant de quitter si admin
-                    handleGroupQuit(in, out);
+                    handleGroupQuit(out);
                     socket.close();
                     return;
                 case INVALID:
@@ -352,7 +351,6 @@ public class Client implements Callable<Integer> {
                     break;
                 case JOIN:
                     if (!handleGroupList(in, out)){
-                        System.out.println("LIST BREAKING");
                         break;
                     }
                     System.out.print("Which group do you want to join ? ");

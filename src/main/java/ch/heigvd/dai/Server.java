@@ -146,7 +146,7 @@ public class Server implements Callable<Integer> {
             Group myClientGroup = getGroupWithAdminId(clientId);
 
             if (myClientGroup == null) {
-                out.write(ServAns.ERROR + END_OF_LINE);
+                out.write(ServAns.ERROR_9 + END_OF_LINE);
                 out.flush();
                 return false;
             }
@@ -262,7 +262,7 @@ public class Server implements Callable<Integer> {
 
                             } catch (NullPointerException e) {
                                 System.out.println("Group dispeared D:");
-                                out.write(ServAns.ERROR + END_OF_LINE);
+                                out.write(ServAns.ERROR_8 + END_OF_LINE);
                                 out.flush();
                             }
                             return;
@@ -372,7 +372,7 @@ public class Server implements Callable<Integer> {
             // TODO should we signify client that it's not in a group ?;
             System.out.println("ERROR : client was not in a group D:");
 
-            out.write(ServAns.ERROR_13 + END_OF_LINE);
+            out.write(ServAns.ERROR_9 + END_OF_LINE);
             out.flush();
         }
 
@@ -392,16 +392,16 @@ public class Server implements Callable<Integer> {
                     groupName = userMessage.split(" ")[1];
                     System.out.println(MsgPrf + "Creating group with name " + groupName);
                     handleGroupCreation(in, out, groupName);
-
-                    break;
-                case LIST_GROUPS:
-                    System.out.println(MsgPrf + "Listing groups to " + clientId);
-                    handleGroupListing(out);
                     break;
 
                 case JOIN:
                     groupName = userMessage.split(" ")[1];
                     handleJoinGroup(in, out, groupName);
+                    break;
+
+                case LIST_GROUPS:
+                    System.out.println(MsgPrf + "Listing groups to " + clientId);
+                    handleGroupListing(out);
                     break;
 
                 case INVALID:
