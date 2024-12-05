@@ -115,15 +115,8 @@ public class Client implements Callable<Integer> {
             return ServAns.valueOf(response);
         } catch (IllegalArgumentException e) {
             return ServAns.WEIRD_ANSWER;
-        } catch (NullPointerException e) {
-            System.out.println("Can not decode NULL");
-            return null;
         }
     }
-
-    // handleReady(.....){
-    // rep = in.readline()
-    // en fonction de rep (qui peut être SEND_LIST, OU FORCEQUIT, ou REALEASE_READY) faire une action
 
     private boolean handleGroupDeletion(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
         System.out.println("Group deletion");
@@ -158,7 +151,6 @@ public class Client implements Callable<Integer> {
                     break;
                 default:
                     System.out.println("WEIRD : received " + serverOut);
-
             }
         }
     }
@@ -269,18 +261,21 @@ public class Client implements Callable<Integer> {
         out.write(ClientMessages.READY + " " + this.id + END_OF_LINE);
         out.flush();
 
+        System.out.println("You signified that you are ready ...");
         while(true) {
             serverOut = in.readLine();
             switch (decodeServerAnswer(serverOut)) {
-                case ServAns.WAITING_USER_TO_QUIT:
-                    System.out.println(MsgPrf + "Waiting for users to quit the group.");
-                    continue;
                 case ServAns.FORCE_QUIT:
                     System.out.println(MsgPrf + "You have been kicked from the group.");
                     handleGroupQuit(in, out);
-                    continue;
-                case ACK_READY:
-                    System.out.println(MsgPrf + "Server has received your readiness.");
+                    return;
+                case ServAns.SEND_PREF_LIST:
+                    // envoyer la liste de préférence
+                    sendPreferences(out, in);
+                    return;
+
+                case ServAns.RELEASE_READY:
+                    System.out.println("You can now act again.");
                     return;
             }
         }

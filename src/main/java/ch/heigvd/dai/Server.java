@@ -9,6 +9,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 
+import java.sql.SQLOutput;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.concurrent.*;
@@ -95,7 +96,6 @@ public class Server implements Callable<Integer> {
             }
             return false;
         }
-
 
         private boolean removeGroup(String name) {
             Iterator<Group> it = groups.iterator();
@@ -250,11 +250,12 @@ public class Server implements Callable<Integer> {
                     case TRY_PASSWD:
                         count -= 1;
                         triedPassword = clientIn.split(" ")[1];
-                        System.out.println(MsgPrf + "Try : " + triedPassword);
+                        System.out.println(MsgPrf + "Client " + clientId + "tried password : " + triedPassword);
                         if (triedPassword.equals(password)) {
                             try{
                                 getGroupByName(groupName).addMember(clientId);
                                 clientInGroup = true;
+                                System.out.println(MsgPrf + "Client " + clientId + " successfully joined group " + groupName);
                                 out.write(ServAns.PASSWD_SUCCESS + END_OF_LINE);
                                 out.flush();
 
@@ -276,16 +277,28 @@ public class Server implements Callable<Integer> {
                         System.out.println("Weird message" + clientIn);
                 }
             }
-
         }
 
         public void handleReady(BufferedReader in, BufferedWriter out, int clientId) throws IOException {
-            out.write(ServAns.READY_RECIEVE + END_OF_LINE);
+
+            // on attend 10 secondes de voir si on demande quelque chose de nous
+            int count = 0;
+            boolean keeLooping = true;
+            while (count < 10) {
+                try {
+                    TimeUnit.SECONDS.sleep(1);
+                } catch (InterruptedException e) {
+                    System.out.println("INTERRUPTED");
+                }
+                count +=1;
+            }
+
+            System.out.println(MsgPrf + "Sending release ready to  ");
+            out.write(ServAns.RELEASE_READY  + END_OF_LINE);
             out.flush();
 
-            out.write(ServAns.ACK_READY + END_OF_LINE);
-            out.flush();
-            membersReady.add(clientId);
+
+            // membersReady.add(clientId);
         }
 
         /**
@@ -328,6 +341,7 @@ public class Server implements Callable<Integer> {
                     clientInGroup = true;
                     break;
                 case LIST_GROUPS:
+                    System.out.println(MsgPrf + "Listing groups to " + clientId);
                     handleGroupListing(out);
                     break;
 
@@ -351,11 +365,13 @@ public class Server implements Callable<Integer> {
             int clientId;
             switch (decodeClientMessage(userMessage)) {
                 case MAKE:
-                    makeFinalList(groups.get(0), in, out); // On prends le premier groupe "Houle" pour debbug
+                    System.out.println(MsgPrf + "Make not available yet ...");
+                    makeFinalList(groups.get(0), in, out);
                     break;
                 case READY:
-                    clientId = Integer.parseInt(clientIn.split(" ")[1]);
-                    handleReady(in, out, clientId);
+                    System.out.println(MsgPrf + "Client " + this.clientId + " is ready ...");
+                    //clientId = Integer.parseInt(clientIn.split(" ")[1]);
+                    handleReady(in, out, this.clientId);
                     break;
                 case DELETE_GROUP:
                     System.out.println(MsgPrf + "Deleting group ... ");
