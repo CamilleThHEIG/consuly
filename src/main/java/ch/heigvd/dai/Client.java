@@ -73,6 +73,7 @@ public class Client implements Callable<Integer> {
             System.out.println("WEIRD. No group joined");
             return;
         }
+
         System.out.print("Currently in group " + joinedGroupName + ". Choose an option: ");
         if (isAdmin){
             System.out.println("(you are admin)");
@@ -80,16 +81,14 @@ public class Client implements Callable<Integer> {
             System.out.println("DELETE : delete the group");
         } else {
             System.out.println("\nREADY : signify the server that you are ready for final playlist (or be kicked)");
-            System.out.println("QUIT : quit the group");
         }
-        //System.out.println("SHOW_MENU : show this menu again (éventuellement)");
+        System.out.println("QUIT : quit the group");
         System.out.print("->");
     }
 
     private void showMenu(){
         System.out.println("Choose an option ?");
         System.out.println("CREATE : create a new group");
-        //System.out.println("DELETE : delete a group");
         System.out.println("JOIN : join a group");
         System.out.println("LIST : Display all existing groups");
         System.out.println("QUIT");
@@ -134,9 +133,7 @@ public class Client implements Callable<Integer> {
             return false;
         }
         // DELETE_GROUP <groupname>
-        String message = ClientMessages.DELETE_GROUP + END_OF_LINE;
-        System.out.println("Sending : " + message);
-        out.write(message); // Send the client id for verification
+        out.write(ClientMessages.DELETE_GROUP + " " + this.id + END_OF_LINE); // Send the client id for verification
         out.flush();
         while(true) {
             serverOut = in.readLine();
@@ -194,27 +191,48 @@ public class Client implements Callable<Integer> {
         }
     }
 
-    private void handleGroupJoin(BufferedReader in, BufferedWriter out, BufferedReader stdIn) {
-//         out.write(ClientMessages.JOIN + " " + groupname + END_OF_LINE);
-//         out.flush();
-//         String serverResponse = in.readLine();
-//         switch (decodeServerAnswer(serverResponse)) {
-//             case ServAns.INVALID_GROUP:
-//                 System.out.println(MsgPrf + "The group does not exist.");
-//                 return false;
-//             case ServAns.INVALID_ID:
-//                 System.out.println(MsgPrf + "You are not the owner of the group.");
-//                 return false;
-//             case ServAns.FAILURE_DELETION:
-//                 System.out.println(MsgPrf + "Failed to delete the group.");
-//                 return false;
-//             case ServAns.WAITING_USER_TO_QUIT:
-//                 System.out.println(MsgPrf + "Waiting for users to quit the group.");
-//                 continue;
-//             case ServAns.SUCCESS_DELETION:
-//                 System.out.println(MsgPrf + "Group deleted successfully.");
-//                 return true;
-//         }
+    private boolean handleGroupJoin(BufferedReader in, BufferedWriter out, BufferedReader stdIn, String chosenGroupName) throws IOException {
+        out.write(ClientMessages.JOIN + " " + chosenGroupName + END_OF_LINE);
+        out.flush();
+
+        String userPasswdGuess;
+        while (true) {
+            serverOut = in.readLine();
+            switch (decodeServerAnswer(serverOut.split(" ")[0])) {
+                case VERIFY_PASSWD:
+                    System.out.print("Password for this group: ");
+                    userPasswdGuess = stdIn.readLine();
+                    out.write(ClientMessages.TRY_PASSWD + " " + userPasswdGuess + END_OF_LINE);
+                    out.flush();
+                    break;
+
+                case RETRY_PASSWD:
+                    System.out.println("Incorrect password. Please try again.");
+                    System.out.print("Password for this group: ");
+                    userPasswdGuess = stdIn.readLine();
+                    out.write(ClientMessages.TRY_PASSWD + " " + userPasswdGuess + END_OF_LINE);
+                    out.flush();
+                    break;
+
+                case PASSWD_SUCCESS:
+                    System.out.println("Successfully joined the group!");
+                    inAGroup = true;
+                    joinedGroupName = chosenGroupName;
+                    return true;
+
+                case NO_MORE_TRIES:
+                    System.out.println("Too many failed attempts. You cannot join this group, Bye bye.");
+                    return false;
+
+                case INVALID_GROUP:
+                    System.out.println("The group does not exist.");
+                    return false;
+
+                default:
+                    System.out.println("Unexpected response: " + serverOut);
+                    return false;
+            }
+        }
     }
 
     private void handleGroupQuit(BufferedReader in, BufferedWriter out) throws IOException {
@@ -222,17 +240,6 @@ public class Client implements Callable<Integer> {
         inAGroup = false;
         out.write(ClientMessages.QUIT + END_OF_LINE);
         out.flush();
-
-        serverOut = in.readLine();
-        switch (decodeServerAnswer(serverOut)) {
-            case ACK_QUIT: break;
-            case ERROR_13:
-                System.out.println("You are currently not in a group.");
-                break;
-            case WEIRD_ANSWER:
-                System.out.println("Weird server answer : " + serverOut);
-                break;
-        }
     }
 
     private void handleGroupList(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
@@ -259,7 +266,7 @@ public class Client implements Callable<Integer> {
     }
 
     private void handleReady(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
-        out.write(ClientMessages.READY + END_OF_LINE);
+        out.write(ClientMessages.READY + " " + this.id + END_OF_LINE);
         out.flush();
 
         while(true) {
@@ -270,14 +277,14 @@ public class Client implements Callable<Integer> {
                     continue;
                 case ServAns.FORCE_QUIT:
                     System.out.println(MsgPrf + "You have been kicked from the group.");
-                    //quit the group
                     handleGroupQuit(in, out);
+                    continue;
+                case ACK_READY:
+                    System.out.println(MsgPrf + "Server has received your readiness.");
                     return;
             }
         }
     }
-
-
 
     private void groupMenu(Socket socket, BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
         // maybe ask the group info to the server
@@ -291,15 +298,19 @@ public class Client implements Callable<Integer> {
                 case MAKE:
                     System.out.println("Making the final playlist");
                     handleMake(in, out, stdIn);
-                    break;
+                    return;
                 case DELETE:
-                    if (handleGroupDeletion(in, out, stdIn)) return;
-                    System.out.println("Still there");
-                    break;
+                    handleGroupDeletion(in, out, stdIn);
+                    return;
                 case READY:
                     System.out.println("Signifying the server that you are ready for final playlist or to be kicked");
                     handleReady(in, out, stdIn);
-                    break;
+                    return;
+                case QUIT:
+                    if (isAdmin) handleGroupDeletion(in, out, stdIn); // Delete le group avant de quitter si admin
+                    handleGroupQuit(in, out);
+                    socket.close();
+                    return;
                 case INVALID:
                     System.out.println("Invalid input. Try again");
                     break;
@@ -307,29 +318,33 @@ public class Client implements Callable<Integer> {
         }
     }
 
-
     private void baseServerMenu(Socket socket, BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
         showMenu();
         BaseMenuCmd input = BaseMenuCmd.INVALID;
         while (input == BaseMenuCmd.INVALID) {
             System.out.print(">");
             clientIn = stdIn.readLine();
-            if (clientIn.equals("MENU")){   // special case because MENU is not linked to communication
-                showMenu();
-                continue;
-            }
+//            if (clientIn.equals("MENU")){   // special case because MENU is not linked to communication
+//                showMenu();
+//                continue;
+//            }
             input = decodeBaseMenuInput(clientIn);
 
             switch (input) {
                 case CREATE:
                     System.out.print("What's the name of your awesome group ? ");
                     String groupName = stdIn.readLine();
-                    handleGroupCreation(in, out, stdIn, groupName);
+                    if(!handleGroupCreation(in, out, stdIn, groupName)) {
+                        System.out.println("Failed to create the group.");
+                    }
                     break;
                 case JOIN:
                     handleGroupList(in, out, stdIn);
-                    System.out.println("Which group do you want to join ?");
-                    handleGroupJoin(in, out, stdIn);
+                    System.out.print("Wich group do you want to join ? ");
+                    String chosenGroupName = stdIn.readLine();
+                    if(!handleGroupJoin(in, out, stdIn, chosenGroupName)) {
+                        socket.close();
+                    }
                     break;
                 case LIST:
                     handleGroupList(in, out, stdIn);
