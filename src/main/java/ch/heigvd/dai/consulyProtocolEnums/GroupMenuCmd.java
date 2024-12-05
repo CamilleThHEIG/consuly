@@ -4,5 +4,6 @@ public enum GroupMenuCmd {
     DELETE,
     READY,
     MAKE,
+    QUIT,
     INVALID
 }

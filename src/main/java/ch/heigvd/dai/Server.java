@@ -33,15 +33,18 @@ public class Server implements Callable<Integer> {
 
     private static final String END_OF_LINE = "\n";
     private static LinkedList<Group> groups;
+    private static LinkedList<Integer> membersReady;
+    private boolean isReady;
 
     static {
         ACTIVE_PORTS = new LinkedList();
+        membersReady = new LinkedList<>();
     }
 
     {
         NUMBER_OF_THREADS = 5;
         groups = new LinkedList<>();
-        groups.add(new Group(1, "Houle", "123"));
+        isReady = false;
     }
 
     private static int lastClientIdUsed = 2;
@@ -247,9 +250,8 @@ public class Server implements Callable<Integer> {
                     case TRY_PASSWD:
                         count -= 1;
                         triedPassword = clientIn.split(" ")[1];
-                        System.out.println("Try : " + triedPassword);
+                        System.out.println(MsgPrf + "Try : " + triedPassword);
                         if (triedPassword.equals(password)) {
-                            System.out.println("PASSWORD IS EQUAL");
                             try{
                                 getGroupByName(groupName).addMember(clientId);
                                 clientInGroup = true;
@@ -262,13 +264,10 @@ public class Server implements Callable<Integer> {
                                 out.flush();
                             }
                             return;
-
                         } else if (count != 0){
-                            System.out.println("RETRY PLS");
                             out.write(ServAns.RETRY_PASSWD + END_OF_LINE);
                             out.flush();
                         } else {
-                            System.out.println("NO MORE TRY");
                             out.write(ServAns.NO_MORE_TRIES + END_OF_LINE);
                             out.flush();
                         }
@@ -280,6 +279,14 @@ public class Server implements Callable<Integer> {
 
         }
 
+        public void handleReady(BufferedReader in, BufferedWriter out, int clientId) throws IOException {
+            out.write(ServAns.READY_RECIEVE + END_OF_LINE);
+            out.flush();
+
+            out.write(ServAns.ACK_READY + END_OF_LINE);
+            out.flush();
+            membersReady.add(clientId);
+        }
 
         /**
          * Handles client wanting to quit it's group
@@ -341,11 +348,25 @@ public class Server implements Callable<Integer> {
         }
 
         public void handleGroupMenu(BufferedReader in, BufferedWriter out, String userMessage) throws IOException {
+            int clientId;
             switch (decodeClientMessage(userMessage)) {
+                case MAKE:
+                    makeFinalList(groups.get(0), in, out); // On prends le premier groupe "Houle" pour debbug
+                    break;
+                case READY:
+                    clientId = Integer.parseInt(clientIn.split(" ")[1]);
+                    handleReady(in, out, clientId);
+                    break;
                 case DELETE_GROUP:
                     System.out.println(MsgPrf + "Deleting group ... ");
-                    boolean groupDeleted = handleGroupDeletion(in, out, clientId);
+                    clientId = Integer.parseInt(clientIn.split(" ")[1]);
+                    handleGroupDeletion(in, out, clientId);
                     clientInGroup = false;
+                    break;
+                case QUIT:
+                    handleQuitGroup(out);
+                    clientInGroup = false;
+                    socket.close();
                     break;
             }
         }
@@ -528,6 +549,5 @@ public class Server implements Callable<Integer> {
                 System.out.println(style);
             }
         }
-
     }
 }
