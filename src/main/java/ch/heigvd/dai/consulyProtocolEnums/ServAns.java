@@ -3,11 +3,10 @@ package ch.heigvd.dai.consulyProtocolEnums;
 public enum ServAns {
     ACCEPT_CONNECT,
     REFUSED_CONNECT,
-    PASSWORD_FOR,
+    CHOOSE_PASSWORD,
     VALID_PASSWORD,
     INVALID_PASSWORD,
-    GRANT_ADMIN,
-    ACK_QUIT,
+    ACK,
     FORCE_QUIT,
     INVALID_GROUP,
     READY_RECEIVE,
@@ -24,8 +23,6 @@ public enum ServAns {
     WAITING_USER_TO_QUIT,
     SUCCESS_DELETION,
     FAILURE_DELETION,
-
-    SUCCESS_QUIT,
 
     END_OF_LIST,
     NO_GROUP,

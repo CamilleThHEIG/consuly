@@ -9,7 +9,6 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 
-import java.sql.SQLOutput;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.concurrent.*;
@@ -34,21 +33,17 @@ public class Server implements Callable<Integer> {
 
     private static final String END_OF_LINE = "\n";
     private static LinkedList<Group> groups;
-    private static LinkedList<Integer> membersReady;
-    private boolean isReady;
+
 
     static {
         ACTIVE_PORTS = new LinkedList();
-        membersReady = new LinkedList<>();
     }
 
     {
         NUMBER_OF_THREADS = 5;
         groups = new LinkedList<>();
-        isReady = false;
     }
 
-    private static int lastClientIdUsed = 2;
 
     @CommandLine.Option(
             names = {"-p", "--port"},
@@ -192,15 +187,16 @@ public class Server implements Callable<Integer> {
          * @return
          * @throws IOException
          */
-        private boolean handleGroupCreation(BufferedReader in, BufferedWriter out, String groupname) throws IOException {
-            String password = null;
+        private boolean handleGroupCreation(BufferedReader in, BufferedWriter out, String groupName) throws IOException {
+            String password;
 
             // Ask the client for the password of the group
-            out.write(ServAns.PASSWORD_FOR + END_OF_LINE);
+            out.write(ServAns.CHOOSE_PASSWORD + END_OF_LINE);
             out.flush();
 
             // Receive the password
             clientIn = in.readLine();
+
             password = clientIn.split(" ")[1];
 
             if (password == null || password.isEmpty()) {
@@ -210,11 +206,11 @@ public class Server implements Callable<Integer> {
             }
 
             // effectively create the group server side
-            Group newGroup = new Group(clientId, groupname, password);
+            Group newGroup = new Group(clientId, groupName, password);
             groups.add(newGroup);
-            clientGroupName = groupname;
+            clientGroupName = groupName;
             clientInGroup = true;
-            out.write(ServAns.VALID_PASSWORD + " " + newGroup.name() + END_OF_LINE);
+            out.write(ServAns.VALID_PASSWORD + END_OF_LINE);
             out.flush();
 
             return true;
@@ -367,7 +363,7 @@ public class Server implements Callable<Integer> {
             for (Group group : groups) {
                 if (group.hasMember(clientId)) {
                     group.removeMember(clientId);
-                    out.write(ServAns.ACK_QUIT + END_OF_LINE);
+                    out.write(ServAns.ACK + END_OF_LINE);
                     out.flush();
                     clientGroupName = "";
                     return;
@@ -462,7 +458,7 @@ public class Server implements Callable<Integer> {
                         socket.close();
                         break;
                 }
-                String groupname;
+
                 System.out.println(MsgPrf + "Waiting for client command ...");
                 while (!socket.isClosed()) {
                     clientIn = in.readLine();

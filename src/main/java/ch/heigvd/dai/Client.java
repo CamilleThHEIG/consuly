@@ -123,14 +123,11 @@ public class Client implements Callable<Integer> {
         }
     }
 
-    private void handleGroupDeletion(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
-        System.out.println("Group deletion");
-
+    private void handleGroupDeletion(BufferedReader in, BufferedWriter out) throws IOException {
         if (joinedGroupName == null) {
             System.out.println("WEIRD. No group joined");
             return;
         }
-        // DELETE_GROUP <groupname>
         out.write(ClientMessages.DELETE_GROUP + " " + this.id + END_OF_LINE); // Send the client id for verification
         out.flush();
         while(true) {
@@ -159,17 +156,16 @@ public class Client implements Callable<Integer> {
         }
     }
 
-    private boolean handleGroupCreation(BufferedReader in, BufferedWriter out, BufferedReader stdIn, String groupname) throws IOException {
+    private boolean handleGroupCreation(BufferedReader in, BufferedWriter out, BufferedReader stdIn, String groupName) throws IOException {
         String password;
 
-        // CREATE_GROUP <groupname>
-        out.write(ClientMessages.CREATE_GROUP + " " + groupname + END_OF_LINE);
+        out.write(ClientMessages.CREATE_GROUP + " " + groupName + END_OF_LINE);
         out.flush();
 
         while(true) {
             serverOut = in.readLine();
             switch (decodeServerAnswer(serverOut.split(" ")[0])) {
-                case PASSWORD_FOR:
+                case CHOOSE_PASSWORD:
                     System.out.print("Enter a password for the group : ");
                     password = stdIn.readLine();
                     System.out.println();
@@ -179,7 +175,7 @@ public class Client implements Callable<Integer> {
                 case ServAns.VALID_PASSWORD:
                     System.out.println(ANSI_GREEN + MsgPrf + "Group created successfully." + ANSI_RESET);
                     isAdmin = inAGroup = true;
-                    joinedGroupName = groupname;
+                    joinedGroupName = groupName;
                     return true;
                 case ServAns.INVALID_PASSWORD:
                     System.out.println(ANSI_RED + MsgPrf + "Invalid password" + ANSI_RESET);
@@ -316,14 +312,14 @@ public class Client implements Callable<Integer> {
                     handleMake(in, out, stdIn);
                     return;
                 case DELETE:
-                    handleGroupDeletion(in, out, stdIn);
+                    handleGroupDeletion(in, out);
                     return;
                 case READY:
                     System.out.println("Signifying the server that you are ready for final playlist or to be kicked");
                     handleReady(in, out, stdIn);
                     return;
                 case QUIT:
-                    if (isAdmin) handleGroupDeletion(in, out, stdIn); // Delete le group avant de quitter si admin
+                    if (isAdmin) handleGroupDeletion(in, out); // Delete le group avant de quitter si admin
                     handleGroupQuit(in, out);
                     socket.close();
                     return;
@@ -343,11 +339,13 @@ public class Client implements Callable<Integer> {
             System.out.print(END_OF_LINE);
 
             input = decodeBaseMenuInput(clientIn);
-
+            String groupName = null;
             switch (input) {
                 case CREATE:
-                    System.out.print("What's the name of your awesome group ? ");
-                    String groupName = stdIn.readLine();
+                    while(groupName == null) {
+                        System.out.print("What's the name of your awesome group ? ");
+                        groupName = stdIn.readLine();
+                    }
                     if(!handleGroupCreation(in, out, stdIn, groupName)) {
                         System.out.println(ANSI_RED + "Failed to create the group." + ANSI_RESET);
                     }
