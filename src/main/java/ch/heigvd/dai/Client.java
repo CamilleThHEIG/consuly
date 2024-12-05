@@ -197,43 +197,45 @@ public class Client implements Callable<Integer> {
     private boolean handleGroupJoin(BufferedReader in, BufferedWriter out, BufferedReader stdIn, String chosenGroupName) throws IOException {
         out.write(ClientMessages.JOIN + " " + chosenGroupName + END_OF_LINE);
         out.flush();
-        String serverResponse;
 
-        boolean keep = true;
-        while (keep) {
+        String serverResponse, userPasswdGuess;
+        while (true) {
             serverResponse = in.readLine();
-            System.out.println("Server response: " + serverResponse);
-
             switch (decodeServerAnswer(serverResponse)) {
-                // TODO rajouter un cas pour lequel on a plus d'essai possibles
-                case RETRY_PASSWD:
-                    // we can try password again
-                    System.out.println("Failed password");
                 case VERIFY_PASSWD:
-                    System.out.print("Password for this group : ");
-                    String userPasswdGuess = stdIn.readLine();
+                    System.out.print("Password for this group: ");
+                    userPasswdGuess = stdIn.readLine();
                     out.write(ClientMessages.TRY_PASSWD + " " + userPasswdGuess + END_OF_LINE);
                     out.flush();
                     break;
+
+                case RETRY_PASSWD:
+                    System.out.println("Incorrect password. Please try again.");
+                    System.out.print("Password for this group: ");
+                    userPasswdGuess = stdIn.readLine();
+                    out.write(ClientMessages.TRY_PASSWD + " " + userPasswdGuess + END_OF_LINE);
+                    out.flush();
+                    break;
+
                 case PASSWD_SUCCESS:
-                    // we joined the group
-                    System.out.println("Success password");
+                    System.out.println("Successfully joined the group!");
                     inAGroup = true;
                     joinedGroupName = chosenGroupName;
-                    keep = false;
                     return true;
+
                 case NO_MORE_TRIES:
-                    keep = false;
-                    System.out.println("Failed password to much times");
-                case null:
-                    System.out.println("Received a null response.");
+                    System.out.println("Too many failed attempts. You cannot join this group.");
+                    return false;
+
+                case INVALID_GROUP:
+                    System.out.println("The group does not exist.");
+                    return false;
+
                 default:
-                    System.out.println("WEIRD : received " + serverResponse);
+                    System.out.println("Unexpected response: " + serverResponse);
+                    return false;
             }
-
         }
-
-        return false;
     }
 
     private void handleGroupQuit(BufferedReader in, BufferedWriter out) throws IOException {
@@ -343,14 +345,12 @@ public class Client implements Callable<Integer> {
                     handleGroupCreation(in, out, stdIn, groupName);
                     break;
                 case JOIN:
+                    System.out.println("IN JOIN PROCESS");
                     handleGroupList(in, out, stdIn);
-                    System.out.println("Which group do you want to join ?");
+                    System.out.print("Wich group do you want to join ? ");
                     String chosenGroupName = stdIn.readLine();
-
-                    if (handleGroupJoin(in, out, stdIn, chosenGroupName)){
-                        return;
-                    }
-
+                    handleGroupJoin(in, out, stdIn, chosenGroupName);
+                    System.out.println("OUT JOIN PROCESS");
                     break;
                 case LIST:
                     handleGroupList(in, out, stdIn);

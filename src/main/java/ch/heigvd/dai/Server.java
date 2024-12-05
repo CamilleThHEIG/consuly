@@ -8,7 +8,6 @@ import java.io.OutputStreamWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -20,12 +19,8 @@ import ch.heigvd.dai.util.JSON;
 import ch.heigvd.dai.util.Group;
 import ch.heigvd.dai.consulyProtocolEnums.*;
 import java.util.concurrent.Callable;
-import org.json.JSONArray;
+
 import org.json.JSONObject;
-import org.json.JSONString;
-import picocli.CommandLine;
-import ch.heigvd.dai.util.JSON;
-import ch.heigvd.dai.util.Group;
 
 
 @CommandLine.Command(name = "server", description = "Launch the server side of the application.")
@@ -46,6 +41,7 @@ public class Server implements Callable<Integer> {
     {
         NUMBER_OF_THREADS = 5;
         groups = new LinkedList<>();
+        groups.add(new Group(1, "Houle", "123"));
     }
 
     private static int lastClientIdUsed = 2;
@@ -76,6 +72,9 @@ public class Server implements Callable<Integer> {
         private final int clientId;
         private boolean clientInGroup = false;
         private final Socket socket;
+        private ClientMessages clientMessage;
+        private ServAns servAnswer;
+        private String serverOut, clientIn;
 
         public ClientHandler(Socket socket, int clientId) {
             this.socket = socket;
@@ -189,15 +188,15 @@ public class Server implements Callable<Integer> {
          * @throws IOException
          */
         private boolean handleGroupCreation(BufferedReader in, BufferedWriter out, String groupname) throws IOException {
-            String clientMessage, password = null;
+            String password = null;
 
             // Ask the client for the password of the group
             out.write(ServAns.PASSWORD_FOR + END_OF_LINE);
             out.flush();
 
             // Receive the password
-            clientMessage = in.readLine();
-            password = clientMessage.split(" ")[1];
+            clientIn = in.readLine();
+            password = clientIn.split(" ")[1];
 
             if (password == null || password.isEmpty()) {
                 out.write(ServAns.INVALID_PASSWORD + END_OF_LINE);
@@ -229,25 +228,28 @@ public class Server implements Callable<Integer> {
             out.flush();
         }
 
-
         public void handleJoinGroup(BufferedReader in, BufferedWriter out, String groupName) throws IOException {
             Group group = getGroupByName(groupName);
-            String password = group.getPassword();
-            String triedPassword;
+            if(group == null) {
+                out.write(ServAns.INVALID_GROUP + END_OF_LINE);
+                out.flush();
+                return;
+            }
+
+            String password = group.password(), triedPassword;
             out.write(ServAns.VERIFY_PASSWD + END_OF_LINE);
             out.flush();
             int count = 3;
 
             while (true){
-                String userMessage = in.readLine();
-                System.out.println("User: " + userMessage);
-                switch (decodeClientMessage(userMessage)) {
+                clientIn = in.readLine();
+                switch (decodeClientMessage(clientIn.split(" ")[0])) {
                     case TRY_PASSWD:
                         count -= 1;
-                        triedPassword = userMessage.split(" ")[1];
-
+                        triedPassword = clientIn.split(" ")[1];
+                        System.out.println("Try : " + triedPassword);
                         if (triedPassword.equals(password)) {
-
+                            System.out.println("PASSWORD IS EQUAL");
                             try{
                                 getGroupByName(groupName).addMember(clientId);
                                 clientInGroup = true;
@@ -262,17 +264,17 @@ public class Server implements Callable<Integer> {
                             return;
 
                         } else if (count != 0){
-
+                            System.out.println("RETRY PLS");
                             out.write(ServAns.RETRY_PASSWD + END_OF_LINE);
                             out.flush();
                         } else {
-
+                            System.out.println("NO MORE TRY");
                             out.write(ServAns.NO_MORE_TRIES + END_OF_LINE);
                             out.flush();
                         }
                         break;
-                    default:
-                        System.out.println("Weird message" + userMessage);
+                    case INVALID:
+                        System.out.println("Weird message" + clientIn);
                 }
             }
 
@@ -311,7 +313,7 @@ public class Server implements Callable<Integer> {
 
         public void handleBaseMenu(BufferedReader in, BufferedWriter out, String userMessage) throws IOException {
             String groupName;
-            switch (decodeClientMessage(userMessage)) {
+            switch (decodeClientMessage(userMessage.split(" ")[0])) {
                 case CREATE_GROUP :
                     groupName = userMessage.split(" ")[1];
                     System.out.println(MsgPrf + "Creating group with name " + groupName);
@@ -354,8 +356,8 @@ public class Server implements Callable<Integer> {
                  BufferedWriter out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8)))
             {
                 // Handle first contact
-                String userFirstMessage = in.readLine();
-                switch (decodeClientMessage(userFirstMessage)) {
+                clientIn = in.readLine();
+                switch (decodeClientMessage(clientIn)) {
                     case CONNECT_SRV:
                         out.write(ServAns.ACCEPT_CONNECT + " " + clientId + END_OF_LINE); // Send the client ID
                         out.flush();
@@ -366,14 +368,14 @@ public class Server implements Callable<Integer> {
                         socket.close();
                         break;
                 }
-                String userMessage, groupname;
+                String groupname;
                 System.out.println(MsgPrf + "Waiting for client command ...");
                 while (!socket.isClosed()) {
-                    userMessage = in.readLine();
+                    clientIn = in.readLine();
                     if (clientInGroup) {
-                        handleGroupMenu(in, out, userMessage);
+                        handleGroupMenu(in, out, clientIn);
                     } else {
-                        handleBaseMenu(in, out, userMessage);
+                        handleBaseMenu(in, out, clientIn);
                     }
                 }
             } catch (IOException e) {

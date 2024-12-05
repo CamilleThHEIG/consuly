@@ -42,7 +42,7 @@ public class Group {
         return name;
     }
 
-    public String getPassword(){
+    public String password(){
         return password;
     }
 
