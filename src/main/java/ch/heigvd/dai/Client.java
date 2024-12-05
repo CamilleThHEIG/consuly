@@ -55,7 +55,7 @@ public class Client implements Callable<Integer> {
     protected boolean edit;
 
     @Override
-    public Integer call() throws FileNotFoundException, UnsupportedEncodingException {
+    public Integer call() throws IOException {
         if (edit) {
             edit();
             return 0;
@@ -64,8 +64,8 @@ public class Client implements Callable<Integer> {
         }
     }
 
-    private void edit(){
-        JSON json = new JSON();
+    private void edit() throws IOException {
+        JSON json = new JSON(this.id);
         json.createByAsking();
     }
 
@@ -379,6 +379,14 @@ public class Client implements Callable<Integer> {
 
     private int connectToServer() {
         System.out.println(MsgPrf + "Connecting to host " + host + " on port " + port);
+        // Check if the user has a preferences file
+        try(FileReader reader = new FileReader("userfile/user0.json")) {
+            System.out.println(ANSI_GREEN + "Preferences file found." + ANSI_RESET);
+        } catch (IOException e) {
+            System.out.println(ANSI_RED + "No preferences file found. Please create one by adding an \"-e\" argument." + ANSI_RESET);
+            return 1;
+        }
+
         try (
             Socket socket = new Socket(host, port);
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)); // BufferedReader to read input from the server
