@@ -4,14 +4,16 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 
 public class Group {
-    private String name;
-    private int id_owner;
+    private final String name;
+    private final int id_owner;
     private int[] id_members;
     private LinkedList<Integer> membersIdList;  // liste qui représente les membres du groupes
     private ArrayList<Boolean> listReceived;    // liste qui représente qui a déjà envoyé sa liste
 
+    private ArrayList<User> userList;   // list that combines the two above
+
     private boolean toBeDeleted = false;
-    private boolean makeFinalList = false;  // indique si l'admin a demandé de faire une liste finale
+    private boolean onGoingMakeFinal = false;  // indique si l'admin a demandé de faire une liste finale
     private final String password;
 
     public Group(int adminId, String name, String password){
@@ -22,7 +24,12 @@ public class Group {
         membersIdList.add(adminId);
         listReceived = new ArrayList<>();
         listReceived.add(false);
+
+        this.userList = new ArrayList<>();
+        userList.add(new User(adminId, false));
+
     }
+
 
     public LinkedList<Integer> getMembersIdList() {
         return membersIdList;
@@ -31,6 +38,16 @@ public class Group {
     public void addMember(int memberId) {
         membersIdList.add(memberId);
         listReceived.add(false);
+
+        userList.add(new User(memberId, false));
+    }
+
+    public boolean getOnGoingMakeFinal() {
+        return onGoingMakeFinal;
+    }
+
+    public void setOnGoingMakeFinal(boolean onGoingMakeFinal) {
+        this.onGoingMakeFinal = onGoingMakeFinal;
     }
 
     public void setToBeDeleted(boolean toBeDeleted) {
@@ -44,6 +61,14 @@ public class Group {
     public void removeMember(int memberId) {
         membersIdList.remove(memberId);
         listReceived.remove(memberId);
+
+        for (User user : userList) {
+            if (user.getId() == memberId) {
+                userList.remove(user);
+                return;
+            }
+        }
+        System.out.println("Weird : couldn't find the desired user in the list");
     }
 
     public String name() {
@@ -66,12 +91,19 @@ public class Group {
         return membersIdList.size() == 1 && membersIdList.getFirst() == id_owner;
     }
 
-    public boolean getMakeFinalList() {
-        return makeFinalList;
+    public void memberSentList(int clientId){
+        for (User user : userList) {
+            if (user.getId() == clientId) {
+                user.setListReceived(true);
+            }
+        }
     }
 
-    public void setMakeFinalList(boolean makeFinalList) {
-        this.makeFinalList = makeFinalList;
+    public boolean everyoneSentList(){
+        for (User user : userList) {
+            if (!user.listReceived()) return false;
+        }
+        return true;
     }
 
     public void notifiyListReceived(int memberId) {
@@ -103,7 +135,7 @@ public class Group {
     }
 }
 
-/*  Test class
+
 class User {
     private final int id;
     private boolean listReceived;
@@ -120,8 +152,8 @@ class User {
         this.listReceived = listReceived;
     }
 
-    public boolean isListReceived() {
+    public boolean listReceived() {
         return listReceived;
     }
 }
-*/
+

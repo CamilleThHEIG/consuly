@@ -118,12 +118,12 @@ public class Client implements Callable<Integer> {
         }
     }
 
-    private boolean handleGroupDeletion(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
+    private void handleGroupDeletion(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
         System.out.println("Group deletion");
 
         if (joinedGroupName == null) {
             System.out.println("WEIRD. No group joined");
-            return false;
+            return;
         }
         // DELETE_GROUP <groupname>
         out.write(ClientMessages.DELETE_GROUP + " " + this.id + END_OF_LINE); // Send the client id for verification
@@ -134,18 +134,18 @@ public class Client implements Callable<Integer> {
             switch (decodeServerAnswer(serverOut)) {
                 case ServAns.INVALID_GROUP:
                     System.out.println(MsgPrf + "The group does not exist.");
-                    return false;
+                    return;
                 case ServAns.INVALID_ID:
                     System.out.println(MsgPrf + "You are not the owner of the group.");
-                    return false;
+                    return;
                 case ServAns.FAILURE_DELETION:
                     System.out.println(MsgPrf + "Failed to delete the group.");
-                    return false;
+                    return;
                 case ServAns.SUCCESS_DELETION:
                     System.out.println(MsgPrf + "Group deleted successfully.");
                     isAdmin = false;
                     inAGroup = false;
-                    return true;
+                    return;
                 case null:
                     System.out.println("Received a null response.");
                     break;
@@ -253,8 +253,22 @@ public class Client implements Callable<Integer> {
         }
     }
 
-    private void handleMake(BufferedReader in, BufferedWriter out, BufferedReader stdIn) {
+    private void handleMake(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
+        System.out.println("In make function");
 
+        out.write(ClientMessages.MAKE + END_OF_LINE);
+        out.flush();
+
+        String servResponse = in.readLine();
+        System.out.println("SWITCH");
+        switch (decodeServerAnswer(servResponse)) {
+            case SEND_PREF_LIST : sendPreferences(out, in);
+                break;
+            default:
+                System.out.println("Weird response : " + servResponse);
+        }
+
+        System.out.println(MsgPrf + "Exit handle make");
     }
 
     private void handleReady(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
@@ -284,8 +298,7 @@ public class Client implements Callable<Integer> {
     private void groupMenu(Socket socket, BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
         // maybe ask the group info to the server
         showGroupMenu();
-        GroupMenuCmd input = GroupMenuCmd.INVALID;
-        while (input == GroupMenuCmd.INVALID) {
+        while (true) {
             System.out.print(">");
             clientIn = stdIn.readLine();
             // if not admin, have an other dedicated switch
@@ -444,14 +457,11 @@ public class Client implements Callable<Integer> {
     private void sendPreferences(BufferedWriter out, BufferedReader in) throws IOException {
         // this section will later be replaced with cleaner interaction with json
         try (FileReader reader = new FileReader("userfiles/user0.json")) {
-            System.out.println("Sending READY_SEND");
             out.write("READY_SEND\n");
             out.flush();
             serverOut = in.readLine();
             if (!serverOut.equals("READY_RECEIVE")) {
                 System.out.println("WEIRD RESPONSE " + serverOut + " TO READY_SEND");
-            } else {
-                System.out.println("Received : " + serverOut);
             }
 
             // Lire le contenu du fichier dans une chaîne

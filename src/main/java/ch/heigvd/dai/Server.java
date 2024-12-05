@@ -84,6 +84,13 @@ public class Server implements Callable<Integer> {
             this.clientId = clientId;
         }
 
+        public String getClientGroupName() {
+            if (clientGroupName.isEmpty()){
+                System.out.println("WARNING EMPTY NAME");
+            }
+            return clientGroupName;
+        }
+
         private boolean removeGroupWithAdminId(int adminId){
             Iterator<Group> it = groups.iterator();
             while (it.hasNext()) {
@@ -215,6 +222,8 @@ public class Server implements Callable<Integer> {
             // effectively create the group server side
             Group newGroup = new Group(clientId, groupname, password);
             groups.add(newGroup);
+            clientGroupName = groupname;
+            clientInGroup = true;
             out.write(ServAns.VALID_PASSWORD + " " + newGroup.name() + END_OF_LINE);
             out.flush();
 
@@ -289,7 +298,6 @@ public class Server implements Callable<Integer> {
 
             // on attend 10 secondes de voir si on demande quelque chose de nous
             int count = 0;
-            boolean keeLooping = true;
             while (count < 10) {
                 try {
                     TimeUnit.SECONDS.sleep(1);
@@ -306,11 +314,18 @@ public class Server implements Callable<Integer> {
                     System.out.println(MsgPrf + "Sending SEND_PREF_LIST ready to  ");
                     out.write(ServAns.SEND_PREF_LIST + END_OF_LINE);
                     out.flush();
+
+                    String clientResponse = in.readLine();
+                    if (decodeClientMessage(clientResponse).equals(ClientMessages.READY_SEND)){
+                        receiveList(in, out);
+
+                    } else {
+                        System.out.println(MsgPrf + "WEIRD message received from client " + clientId + " : " + clientResponse);
+                    }
                     return;
                 }
                 count +=1;
             }
-
 
             System.out.println(MsgPrf + "Sending release ready to  ");
             out.write(ServAns.RELEASE_READY  + END_OF_LINE);
@@ -318,6 +333,40 @@ public class Server implements Callable<Integer> {
 
 
             // membersReady.add(clientId);
+        }
+
+        public void handleMake(BufferedReader in, BufferedWriter out) throws IOException {
+            System.out.println(MsgPrf + "In handleMake");
+            // assuming client is Admin
+            getGroupWithAdminId(clientId).setOnGoingMakeFinal(true);
+
+            // envoyer demander l'envoi de la liste de l'admin
+            // ....
+
+            System.out.println(MsgPrf + "Sending SEND_PREF_LIST to client (admin) " + clientId);
+            out.write(ServAns.SEND_PREF_LIST + END_OF_LINE);
+            out.flush();
+
+            String clientResponse = in.readLine();
+            if (decodeClientMessage(clientResponse).equals(ClientMessages.READY_SEND)){
+                receiveList(in, out);
+            } else{
+                System.out.println(MsgPrf + "WEIRD message received from client " + clientId + " : " + clientResponse);
+            }
+
+            // attendre que tout le monde ait envoyé sa liste
+            while (!getGroupWithAdminId(clientId).everyoneSentList()){
+                // attendre
+                try {
+                    TimeUnit.SECONDS.sleep(1);
+                } catch (InterruptedException e) {
+                    System.out.println("INTERRUPTED");
+                }
+            }
+            // maintenant que tout le monde a envoyé, faire la finale
+            makeFinalList(getGroupWithAdminId(clientId), in, out);
+
+            System.out.println(MsgPrf + "Exit handleMake");
         }
 
         /**
@@ -357,8 +406,8 @@ public class Server implements Callable<Integer> {
                 case CREATE_GROUP :
                     groupName = userMessage.split(" ")[1];
                     System.out.println(MsgPrf + "Creating group with name " + groupName);
-                    boolean groupCreated = handleGroupCreation(in, out, groupName);
-                    clientInGroup = true;
+                    handleGroupCreation(in, out, groupName);
+
                     break;
                 case LIST_GROUPS:
                     System.out.println(MsgPrf + "Listing groups to " + clientId);
@@ -386,11 +435,10 @@ public class Server implements Callable<Integer> {
             switch (decodeClientMessage(userMessage)) {
                 case MAKE:
                     System.out.println(MsgPrf + "Make not available yet ...");
-                    makeFinalList(groups.get(0), in, out);
+                    handleMake(in, out);
                     break;
                 case READY:
                     System.out.println(MsgPrf + "Client " + this.clientId + " is ready ...");
-                    //clientId = Integer.parseInt(clientIn.split(" ")[1]);
                     handleReady(in, out, this.clientId);
                     break;
                 case DELETE_GROUP:
@@ -447,7 +495,8 @@ public class Server implements Callable<Integer> {
          * @param out
          * @throws IOException
          */
-        public void receiveList(BufferedReader in, BufferedWriter out) throws IOException {
+        public boolean receiveList(BufferedReader in, BufferedWriter out) throws IOException {
+            System.out.println(MsgPrf + "In receiveList");
             out.write("READY_RECEIVE\n");
             out.flush();
 
@@ -490,27 +539,18 @@ public class Server implements Callable<Integer> {
                         break;
                 }
             }
-            /*
-            System.out.println("Like");
-            for (int j = 0; j < like.length(); ++j) {
-                System.out.println(like.getString(j));
-            }
-
-            System.out.println("\nDisike");
-            for (int j = 0; j < dislike.length(); ++j) {
-                System.out.println(dislike.getString(j));
-            }
-
-            System.out.println("\nNeutral");
-            for (int j = 0; j < noopinion.length(); ++j) {
-                System.out.println(noopinion.getString(j));
-            }
 
             // write the result
-            JSON json = new JSON(nextClientId);
+            JSON json = new JSON(clientId);
 
             json.writeFileWithLists(like, dislike, noopinion);
-             */
+
+            System.out.println(MsgPrf + "Before with groupName : " + clientGroupName + " and client id " + clientId);
+            getGroupByName(clientGroupName).memberSentList(clientId);
+
+            System.out.println(MsgPrf + "End of receiveList");
+
+            return true;
         }
 
         /**
@@ -521,9 +561,10 @@ public class Server implements Callable<Integer> {
          * @throws IOException
          */
         public void makeFinalList(Group group, BufferedReader in, BufferedWriter out) throws IOException {
+            System.out.println(MsgPrf + "In make final");
             LinkedList<Integer> membersList = group.getMembersIdList();
-            System.out.println("Here are the members");
-            JSON jsonInteractor = new JSON();
+            System.out.println("Client id " + clientId);
+            JSON jsonInteractor = new JSON(clientId);
 
             LinkedList<JSONArray> allDislikes = new LinkedList<>();
             LinkedList<String> finalList = new LinkedList<>();
@@ -533,8 +574,8 @@ public class Server implements Callable<Integer> {
                 // ask their list
 
                 //TODO WHEN TESTING OVER, REMOVE THIS LINE WITH COMMENTED ONE
-                String filePath = "serverfiles/test" + memberId + ".json";
-                // String filePath = "serverfiles/user" + memberId + ".json";
+                //String filePath = "serverfiles/test" + memberId + ".json";
+                 String filePath = "serverfiles/user" + memberId + ".json";
 
                 JSONObject x =  jsonInteractor.loadJsonFile(filePath);
 
