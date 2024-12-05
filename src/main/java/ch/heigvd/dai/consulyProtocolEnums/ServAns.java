@@ -10,9 +10,9 @@ public enum ServAns {
     ACK_QUIT,
     FORCE_QUIT,
     INVALID_GROUP,
-    READY_RECIEVE,
-    ACK_READY,
-
+    READY_RECEIVE,
+    RELEASE_READY,
+    SEND_PREF_LIST,
 
     VERIFY_PASSWD,
     PASSWD_SUCCESS,

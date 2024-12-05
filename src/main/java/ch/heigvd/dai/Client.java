@@ -122,16 +122,12 @@ public class Client implements Callable<Integer> {
         }
     }
 
-    // handleReady(.....){
-    // rep = in.readline()
-    // en fonction de rep (qui peut être SEND_LIST, OU FORCEQUIT, ou REALEASE_READY) faire une action
-
-    private boolean handleGroupDeletion(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
+    private void handleGroupDeletion(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
         System.out.println("Group deletion");
 
         if (joinedGroupName == null) {
-            System.out.println("You are not in a group.");
-            return false;
+            System.out.println("WEIRD. No group joined");
+            return;
         }
         // DELETE_GROUP <groupname>
         out.write(ClientMessages.DELETE_GROUP + " " + this.id + END_OF_LINE); // Send the client id for verification
@@ -152,13 +148,12 @@ public class Client implements Callable<Integer> {
                     System.out.println(ANSI_GREEN + MsgPrf + "Group deleted successfully." + ANSI_RESET);
                     isAdmin = false;
                     inAGroup = false;
-                    return true;
+                    return;
                 case null:
                     System.out.println(ANSI_RED + "Received a null response." + ANSI_RESET);
                     break;
                 default:
                     System.out.println("WEIRD : received " + serverOut);
-
             }
         }
     }
@@ -262,26 +257,43 @@ public class Client implements Callable<Integer> {
         }
     }
 
-    private void handleMake(BufferedReader in, BufferedWriter out, BufferedReader stdIn) {
+    private void handleMake(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
+        System.out.println("In make function");
 
+        out.write(ClientMessages.MAKE + END_OF_LINE);
+        out.flush();
+
+        String servResponse = in.readLine();
+        System.out.println("SWITCH");
+        switch (decodeServerAnswer(servResponse)) {
+            case SEND_PREF_LIST : sendPreferences(out, in);
+                break;
+            default:
+                System.out.println("Weird response : " + servResponse);
+        }
+
+        System.out.println(MsgPrf + "Exit handle make");
     }
 
     private void handleReady(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
         out.write(ClientMessages.READY + " " + this.id + END_OF_LINE);
         out.flush();
 
+        System.out.println("You signified that you are ready ...");
         while(true) {
             serverOut = in.readLine();
             switch (decodeServerAnswer(serverOut)) {
-                case ServAns.WAITING_USER_TO_QUIT:
-                    System.out.println(ANSI_RED +MsgPrf + "Waiting for users to quit the group." + ANSI_RESET);
-                    continue;
                 case ServAns.FORCE_QUIT:
                     System.out.println(ANSI_RED + MsgPrf + "You have been kicked from the group." + ANSI_RESET);
                     handleGroupQuit(in, out);
-                    continue;
-                case ACK_READY:
-                    System.out.println(ANSI_RED + MsgPrf + "Server has received your readiness." + ANSI_RESET);
+                    return;
+                case ServAns.SEND_PREF_LIST:
+                    // envoyer la liste de préférence
+                    sendPreferences(out, in);
+                    return;
+
+                case ServAns.RELEASE_READY:
+                    System.out.println(ANSI_GREEN + MsgPrf + "You can now act again." + ANSI_RESET);
                     return;
             }
         }
@@ -290,8 +302,7 @@ public class Client implements Callable<Integer> {
     private void groupMenu(Socket socket, BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
         // maybe ask the group info to the server
         showGroupMenu();
-        GroupMenuCmd input = GroupMenuCmd.INVALID;
-        while (input == GroupMenuCmd.INVALID) {
+        while (true) {
             System.out.print(">");
             clientIn = stdIn.readLine();
             System.out.print(END_OF_LINE);
@@ -448,7 +459,6 @@ public class Client implements Callable<Integer> {
     private void sendPreferences(BufferedWriter out, BufferedReader in) throws IOException {
         // this section will later be replaced with cleaner interaction with json
         try (FileReader reader = new FileReader("userfiles/user0.json")) {
-            System.out.println("Sending READY_SEND");
             out.write("READY_SEND\n");
             out.flush();
             serverOut = in.readLine();
