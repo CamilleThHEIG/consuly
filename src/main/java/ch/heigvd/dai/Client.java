@@ -29,7 +29,6 @@ public class Client implements Callable<Integer> {
     private static boolean connectedToServer, inAGroup = false;
     private boolean isAdmin = false;
     private ClientMessages clientMessage;
-    private ServAns servAnswer;
     private String serverOut, clientIn;
     private int id;
     private String joinedGroupName = "";
@@ -259,7 +258,7 @@ public class Client implements Callable<Integer> {
         }
     }
 
-    private void handleMake(BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
+    private void handleMake(BufferedReader in, BufferedWriter out) throws IOException {
         out.write(ClientMessages.MAKE + END_OF_LINE);
         out.flush();
 
@@ -308,7 +307,7 @@ public class Client implements Callable<Integer> {
             switch (decodeGroupMenuInput(clientIn)) {
                 case MAKE:
                     System.out.println("Making the final playlist");
-                    handleMake(in, out, stdIn);
+                    handleMake(in, out);
                     return;
                 case DELETE:
                     handleGroupDeletion(in, out);
