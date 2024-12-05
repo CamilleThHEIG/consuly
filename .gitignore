@@ -44,4 +44,4 @@ Thumbs.db
 # Ignore our user files
 
 userfiles/*.json
-
+serverfiles/*.json
