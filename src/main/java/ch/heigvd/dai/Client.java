@@ -298,14 +298,14 @@ public class Client implements Callable<Integer> {
                 case MAKE:
                     System.out.println("Making the final playlist");
                     handleMake(in, out, stdIn);
-                    break;
+                    return;
                 case DELETE:
-                    if (handleGroupDeletion(in, out, stdIn)) return;
-                    break;
+                    handleGroupDeletion(in, out, stdIn);
+                    return;
                 case READY:
                     System.out.println("Signifying the server that you are ready for final playlist or to be kicked");
                     handleReady(in, out, stdIn);
-                    break;
+                    return;
                 case QUIT:
                     if (isAdmin) handleGroupDeletion(in, out, stdIn); // Delete le group avant de quitter si admin
                     handleGroupQuit(in, out);
