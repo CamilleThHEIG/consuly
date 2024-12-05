@@ -44,7 +44,6 @@ public class Server implements Callable<Integer> {
     {
         NUMBER_OF_THREADS = 5;
         groups = new LinkedList<>();
-        groups.add(new Group(1, "Houle", "123"));
         isReady = false;
     }
 
