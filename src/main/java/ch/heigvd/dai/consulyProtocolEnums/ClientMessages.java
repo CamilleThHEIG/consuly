@@ -9,6 +9,7 @@ public enum ClientMessages {
     ACK_VALID,
     DELETE_GROUP,
     LIST_GROUPS,
-    JOIN_GROUP,
+    JOIN,
+    TRY_PASSWD,
     INVALID
 }

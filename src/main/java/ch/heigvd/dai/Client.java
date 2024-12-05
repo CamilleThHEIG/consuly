@@ -194,27 +194,46 @@ public class Client implements Callable<Integer> {
         }
     }
 
-    private void handleGroupJoin(BufferedReader in, BufferedWriter out, BufferedReader stdIn) {
-//         out.write(ClientMessages.JOIN + " " + groupname + END_OF_LINE);
-//         out.flush();
-//         String serverResponse = in.readLine();
-//         switch (decodeServerAnswer(serverResponse)) {
-//             case ServAns.INVALID_GROUP:
-//                 System.out.println(MsgPrf + "The group does not exist.");
-//                 return false;
-//             case ServAns.INVALID_ID:
-//                 System.out.println(MsgPrf + "You are not the owner of the group.");
-//                 return false;
-//             case ServAns.FAILURE_DELETION:
-//                 System.out.println(MsgPrf + "Failed to delete the group.");
-//                 return false;
-//             case ServAns.WAITING_USER_TO_QUIT:
-//                 System.out.println(MsgPrf + "Waiting for users to quit the group.");
-//                 continue;
-//             case ServAns.SUCCESS_DELETION:
-//                 System.out.println(MsgPrf + "Group deleted successfully.");
-//                 return true;
-//         }
+    private boolean handleGroupJoin(BufferedReader in, BufferedWriter out, BufferedReader stdIn, String chosenGroupName) throws IOException {
+        out.write(ClientMessages.JOIN + " " + chosenGroupName + END_OF_LINE);
+        out.flush();
+        String serverResponse;
+
+        boolean keep = true;
+        while (keep) {
+            serverResponse = in.readLine();
+            System.out.println("Server response: " + serverResponse);
+
+            switch (decodeServerAnswer(serverResponse)) {
+                // TODO rajouter un cas pour lequel on a plus d'essai possibles
+                case RETRY_PASSWD:
+                    // we can try password again
+                    System.out.println("Failed password");
+                case VERIFY_PASSWD:
+                    System.out.print("Password for this group : ");
+                    String userPasswdGuess = stdIn.readLine();
+                    out.write(ClientMessages.TRY_PASSWD + " " + userPasswdGuess + END_OF_LINE);
+                    out.flush();
+                    break;
+                case PASSWD_SUCCESS:
+                    // we joined the group
+                    System.out.println("Success password");
+                    inAGroup = true;
+                    joinedGroupName = chosenGroupName;
+                    keep = false;
+                    return true;
+                case NO_MORE_TRIES:
+                    keep = false;
+                    System.out.println("Failed password to much times");
+                case null:
+                    System.out.println("Received a null response.");
+                default:
+                    System.out.println("WEIRD : received " + serverResponse);
+            }
+
+        }
+
+        return false;
     }
 
     private void handleGroupQuit(BufferedReader in, BufferedWriter out) throws IOException {
@@ -277,8 +296,6 @@ public class Client implements Callable<Integer> {
         }
     }
 
-
-
     private void groupMenu(Socket socket, BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
         // maybe ask the group info to the server
         showGroupMenu();
@@ -307,7 +324,6 @@ public class Client implements Callable<Integer> {
         }
     }
 
-
     private void baseServerMenu(Socket socket, BufferedReader in, BufferedWriter out, BufferedReader stdIn) throws IOException {
         showMenu();
         BaseMenuCmd input = BaseMenuCmd.INVALID;
@@ -329,7 +345,12 @@ public class Client implements Callable<Integer> {
                 case JOIN:
                     handleGroupList(in, out, stdIn);
                     System.out.println("Which group do you want to join ?");
-                    handleGroupJoin(in, out, stdIn);
+                    String chosenGroupName = stdIn.readLine();
+
+                    if (handleGroupJoin(in, out, stdIn, chosenGroupName)){
+                        return;
+                    }
+
                     break;
                 case LIST:
                     handleGroupList(in, out, stdIn);

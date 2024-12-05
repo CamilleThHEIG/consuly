@@ -12,14 +12,7 @@ public class Group {
 
     private boolean toBeDeleted;
     private boolean makeFinalList = false;  // indique si l'admin a demandé de faire une liste finale
-    private String password;
-
-
-    public Group(String name, int id_owner, int[] id_members) {
-        this.name = name;
-        this.id_owner = id_owner;
-        this.id_members = id_members;
-    }
+    private final String password;
 
     public Group(int adminId, String name, String password){
         this.id_owner = adminId;
@@ -47,6 +40,10 @@ public class Group {
 
     public String name() {
         return name;
+    }
+
+    public String getPassword(){
+        return password;
     }
 
     public boolean isOwner(int candidateId){
