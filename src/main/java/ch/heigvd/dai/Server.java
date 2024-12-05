@@ -91,6 +91,10 @@ public class Server implements Callable<Integer> {
             return clientGroupName;
         }
 
+        public String getLocalPrefix(){
+            return MsgPrf + " to " + clientId + " : ";
+        }
+
         private boolean removeGroupWithAdminId(int adminId){
             Iterator<Group> it = groups.iterator();
             while (it.hasNext()) {
@@ -304,21 +308,20 @@ public class Server implements Callable<Integer> {
                 } catch (InterruptedException e) {
                     System.out.println("INTERRUPTED");
                 }
-
-                if (getGroupByName(clientGroupName).getToBeDeleted()){
+                boolean makeFinal = getGroupByName(clientGroupName).getOnGoingMakeFinal();
+                if (getGroupByName(getClientGroupName()).getToBeDeleted()){
                     System.out.println(MsgPrf + "Sending FORCE_QUIT ready to  ");
                     out.write(ServAns.FORCE_QUIT + END_OF_LINE);
                     out.flush();
                     return;
-                } else if (getGroupByName(clientGroupName).getToBeDeleted()){
-                    System.out.println(MsgPrf + "Sending SEND_PREF_LIST ready to client " + clientId);
+                } else if (makeFinal){
+                    System.out.println(getLocalPrefix() + "Sending SEND_PREF_LIST ready");
                     out.write(ServAns.SEND_PREF_LIST + END_OF_LINE);
                     out.flush();
                     String clientResponse = in.readLine();
-                    System.out.println("client response: " + clientResponse);
+                    System.out.println(getLocalPrefix() + "client response: " + clientResponse);
                     if (decodeClientMessage(clientResponse).equals(ClientMessages.READY_SEND)){
                         receiveList(in, out);
-
                     } else {
                         System.out.println(MsgPrf + "WEIRD message received from client " + clientId + " : " + clientResponse);
                     }
@@ -342,11 +345,12 @@ public class Server implements Callable<Integer> {
             // envoyer demander l'envoi de la liste de l'admin
             // ....
 
-            System.out.println(MsgPrf + "Sending SEND_PREF_LIST to client (admin) " + clientId);
+            System.out.println(getLocalPrefix() + "Sending SEND_PREF_LIST to client (admin) " + clientId);
             out.write(ServAns.SEND_PREF_LIST + END_OF_LINE);
             out.flush();
 
             String clientResponse = in.readLine();
+
             if (decodeClientMessage(clientResponse).equals(ClientMessages.READY_SEND)){
                 receiveList(in, out);
             } else{
@@ -363,6 +367,8 @@ public class Server implements Callable<Integer> {
                 }
             }
             // maintenant que tout le monde a envoyé, faire la finale
+
+
             makeFinalList(getGroupWithAdminId(clientId), in, out);
 
             System.out.println(MsgPrf + "Exit handleMake");
