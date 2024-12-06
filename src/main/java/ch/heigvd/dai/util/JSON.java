@@ -16,7 +16,7 @@ import java.util.Scanner;
 public class JSON {
     private final int id;
     private final String[] styles = {"Pop", "Rock", "Metal", "Classical"};
-    private String directory ="userfile/", filePath;
+    private String directory ="userfiles/", filePath;
 
     public enum Taste {
         like, dislike, noopinion;

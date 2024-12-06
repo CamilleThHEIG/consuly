@@ -249,7 +249,7 @@ public class Client implements Callable<Integer> {
                     return false;
                 case ServAns.AVAILABLE_GROUP:
                     // TODO maybe improve this display if possible ?
-                    System.out.println("GROUP : " + serverOut.split(" ")[1]);
+                    System.out.println(ANSI_YELLOW + "- " + serverOut.split(" ")[1] + ANSI_RESET);
                     break;
                 case ServAns.WEIRD_ANSWER:
                     System.out.println(ANSI_YELLOW + "WEIRD :" + serverOut + ANSI_RESET);
@@ -375,7 +375,7 @@ public class Client implements Callable<Integer> {
     private int connectToServer() {
         System.out.println(MsgPrf + "Connecting to host " + host + " on port " + port);
         // Check if the user has a preferences file
-        try(FileReader reader = new FileReader("userfile/user0.json")) {
+        try(FileReader reader = new FileReader("userfiles/user0.json")) {
             System.out.println(ANSI_GREEN + "Preferences file found." + ANSI_RESET);
         } catch (IOException e) {
             System.out.println(ANSI_RED + "No preferences file found. Please create one by adding an \"-e\" argument." + ANSI_RESET);
@@ -383,10 +383,10 @@ public class Client implements Callable<Integer> {
         }
 
         try (
-            Socket socket = new Socket(host, port);
-            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)); // BufferedReader to read input from the server
-            BufferedWriter out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
-            BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)); // BufferedReader to read input from the standard input (console)
+                Socket socket = new Socket(host, port);
+                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)); // BufferedReader to read input from the server
+                BufferedWriter out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
+                BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)); // BufferedReader to read input from the standard input (console)
         ){
             out.write(ClientMessages.CONNECT_SRV + END_OF_LINE); // first contact with server
             out.flush();
@@ -410,7 +410,6 @@ public class Client implements Callable<Integer> {
                 if (inAGroup){
                     groupMenu(socket, in, out, stdIn);
                 } else {
-                    System.out.println("BASE SERVER MENU");
                     baseServerMenu(socket, in, out, stdIn);
                 }
             }
